@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>FridgeChef.Api</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Legacy — kept during migration period -->
+    <ProjectReference Include="..\FridgeChef.Application\FridgeChef.Application.csproj" />
+    <ProjectReference Include="..\FridgeChef.Infrastructure\FridgeChef.Infrastructure.csproj" />
+
+    <!-- New bounded context projects -->
+    <ProjectReference Include="..\Catalog\FridgeChef.Catalog.Application\FridgeChef.Catalog.Application.csproj" />
+    <ProjectReference Include="..\Catalog\FridgeChef.Catalog.Infrastructure\FridgeChef.Catalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\Ontology\FridgeChef.Ontology.Infrastructure\FridgeChef.Ontology.Infrastructure.csproj" />
+    <ProjectReference Include="..\Auth\FridgeChef.Auth.Infrastructure\FridgeChef.Auth.Infrastructure.csproj" />
+    <ProjectReference Include="..\Pantry\FridgeChef.Pantry.Infrastructure\FridgeChef.Pantry.Infrastructure.csproj" />
+    <ProjectReference Include="..\Favorites\FridgeChef.Favorites.Infrastructure\FridgeChef.Favorites.Infrastructure.csproj" />
+    <ProjectReference Include="..\Pricing\FridgeChef.Pricing.Infrastructure\FridgeChef.Pricing.Infrastructure.csproj" />
+    <ProjectReference Include="..\UserPreferences\FridgeChef.UserPreferences.Infrastructure\FridgeChef.UserPreferences.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

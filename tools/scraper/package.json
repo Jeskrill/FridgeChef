@@ -1,0 +1,23 @@
+{
+  "name": "fridgechef-5ka-scraper",
+  "version": "1.0.0",
+  "description": "Puppeteer stealth scraper sidecar for 5ka.ru price data",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:visible": "HEADLESS=false node server.js",
+    "init": "node init-session.js",
+    "debug": "node debug.js",
+    "scrape": "node scrape.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "got-scraping": "^4.2.1",
+    "puppeteer": "^24.41.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}

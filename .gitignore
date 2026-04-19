@@ -1,0 +1,24 @@
+# IDE
+.idea/
+.vs/
+*.suo
+*.user
+*.sln.docstates
+
+# Build
+bin/
+obj/
+out/
+publish/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scraper
+tools/scraper/.chrome-profile/
+tools/scraper/node_modules/
+
+# Logs
+*.log
+logs/
