@@ -20,6 +20,7 @@ internal static class PantryEndpoints
             return Results.Ok(result);
         })
         .Produces<IReadOnlyList<PantryItemResponse>>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Содержимое холодильника")
         .WithDescription("""
             Возвращает список продуктов, добавленных пользователем в холодильник.
@@ -51,6 +52,7 @@ internal static class PantryEndpoints
         .Produces<PantryItemResponse>(StatusCodes.Status201Created)
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Добавить продукт в холодильник")
         .WithDescription("""
             Добавляет продукт в холодильник пользователя.
@@ -79,6 +81,7 @@ internal static class PantryEndpoints
         })
         .Produces<PantryItemResponse>()
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Обновить количество продукта")
         .WithDescription("""
             Частичное обновление записи в холодильнике. Необходимо передать хотя бы одно поле.
@@ -97,6 +100,7 @@ internal static class PantryEndpoints
         })
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Удалить продукт из холодильника")
         .WithDescription("""
             Удаляет запись из холодильника.

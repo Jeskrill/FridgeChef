@@ -154,11 +154,6 @@ builder.Services.AddSwaggerGen(options =>
 
             Защищённые эндпоинты требуют JWT. Авторизуйтесь через кнопку **Authorize** вверху страницы.
             """,
-        Contact = new Microsoft.OpenApi.Models.OpenApiContact
-        {
-            Name = "FridgeChef Team",
-            Email = "dev@fridgechef.ru"
-        }
     });
 
     options.DocumentFilter<TagDescriptionsDocumentFilter>();

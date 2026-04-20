@@ -18,6 +18,7 @@ internal static class SettingsEndpoints
         group.MapGet("/allergens", async (HttpContext http, [FromServices] GetAllergensHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<AllergenResponse>>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Аллергены пользователя")
         .WithDescription("""
             Возвращает список аллергенов пользователя.
@@ -41,6 +42,7 @@ internal static class SettingsEndpoints
         })
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Добавить аллерген")
         .WithDescription("""
             Добавляет продукт в список аллергенов.
@@ -61,6 +63,7 @@ internal static class SettingsEndpoints
             return result.ToHttpResult();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Удалить аллерген")
         .WithDescription("Удаляет продукт из списка аллергенов. Требуется JWT-авторизация.");
 
@@ -69,6 +72,7 @@ internal static class SettingsEndpoints
         group.MapGet("/favorite-foods", async (HttpContext http, [FromServices] GetFavoriteFoodsHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<FavoriteFoodResponse>>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Любимые продукты")
         .WithDescription("""
             Возвращает список любимых продуктов пользователя.
@@ -91,6 +95,7 @@ internal static class SettingsEndpoints
             return result.ToHttpResult();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Добавить любимый продукт")
         .WithDescription("Добавляет продукт в список любимых. Требуется JWT-авторизация.");
 
@@ -105,6 +110,7 @@ internal static class SettingsEndpoints
             return result.ToHttpResult();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Удалить любимый продукт")
         .WithDescription("Удаляет продукт из списка любимых. Требуется JWT-авторизация.");
 
@@ -113,6 +119,7 @@ internal static class SettingsEndpoints
         group.MapGet("/excluded-foods", async (HttpContext http, [FromServices] GetExcludedFoodsHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<ExcludedFoodResponse>>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Исключённые продукты")
         .WithDescription("""
             Возвращает список продуктов, которые пользователь не хочет видеть в рецептах.
@@ -135,6 +142,7 @@ internal static class SettingsEndpoints
             return result.ToHttpResult();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Добавить исключённый продукт")
         .WithDescription("Добавляет продукт в список нежелательных. Требуется JWT-авторизация.");
 
@@ -149,6 +157,7 @@ internal static class SettingsEndpoints
             return result.ToHttpResult();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Удалить продукт из исключений")
         .WithDescription("Удаляет продукт из списка нежелательных. Требуется JWT-авторизация.");
 
@@ -157,6 +166,7 @@ internal static class SettingsEndpoints
         group.MapGet("/diets", async (HttpContext http, [FromServices] GetDietsHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<UserDietResponse>>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Диеты по умолчанию")
         .WithDescription("""
             Возвращает диетические предпочтения пользователя, применяемые при подборе рецептов.
@@ -180,6 +190,7 @@ internal static class SettingsEndpoints
         })
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Обновить диеты по умолчанию")
         .WithDescription("""
             Полностью заменяет список диетических предпочтений.
@@ -193,6 +204,7 @@ internal static class SettingsEndpoints
         group.MapGet("/cuisines", async (HttpContext http, [FromServices] GetCuisinesHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<UserCuisineResponse>>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Предпочтительные кухни")
         .WithDescription("""
             Возвращает список nationally кухонь, предпочтительных для пользователя.
@@ -217,6 +229,7 @@ internal static class SettingsEndpoints
         })
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Обновить предпочтительные кухни")
         .WithDescription("""
             Полностью заменяет список предпочтительных кухонь.

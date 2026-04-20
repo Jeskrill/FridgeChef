@@ -31,6 +31,8 @@ internal static class AdminEndpoints
             return Results.Ok(result);
         })
         .Produces<AdminUserListResponse>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .WithSummary("Список пользователей")
         .WithDescription("""
             Возвращает постранично список всех пользователей платформы.
@@ -49,6 +51,8 @@ internal static class AdminEndpoints
         })
         .Produces<AdminUserResponse>()
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .WithSummary("Заблокировать / разблокировать пользователя")
         .WithDescription("""
             Меняет статус блокировки пользователя.
@@ -66,6 +70,8 @@ internal static class AdminEndpoints
             return Results.Ok(result);
         })
         .Produces<AdminStatsResponse>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden)
         .WithSummary("Агрегированная статистика платформы")
         .WithDescription("""
             Возвращает ключевые метрики: общее число пользователей, рецептов,

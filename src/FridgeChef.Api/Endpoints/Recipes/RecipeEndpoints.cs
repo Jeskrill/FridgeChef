@@ -107,6 +107,7 @@ internal static class RecipeEndpoints
             var result = await handler.HandleAsync(userId, request, ct);
             return Results.Ok(result);
         })
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .RequireAuthorization()
         .Produces<IReadOnlyList<MatchResultResponse>>()
         .WithSummary("Подбор рецептов из холодильника")

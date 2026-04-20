@@ -13,13 +13,14 @@ internal static class FavoriteEndpoints
             .WithTags("Favorites")
             .RequireAuthorization();
 
-        // ── GET /favorites ──────────────────────────────────────────────────────
+        //  GET /favorites 
         group.MapGet("/", async (HttpContext http, [FromServices] GetFavoritesHandler handler, CancellationToken ct) =>
         {
             var result = await handler.HandleAsync(http.User.GetUserId(), ct);
             return Results.Ok(result);
         })
         .Produces<IReadOnlyList<RecipeCardResponse>>()
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Избранные рецепты")
         .WithDescription("""
             Возвращает список рецептов, добавленных текущим пользователем в избранное,
@@ -28,7 +29,7 @@ internal static class FavoriteEndpoints
             **Требует JWT-авторизацию.**
             """);
 
-        // ── PUT /favorites/{recipeId} ───────────────────────────────────────────
+        //  PUT /favorites/{recipeId}
         // PUT — idempotent upsert: клиент сам задаёт ключ ресурса (recipeId)
         group.MapPut("/{recipeId:guid}", async (
             Guid recipeId, HttpContext http,
@@ -41,6 +42,7 @@ internal static class FavoriteEndpoints
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Добавить рецепт в избранное")
         .WithDescription("""
             Идемпотентно добавляет рецепт в избранное текущего пользователя.
@@ -62,6 +64,7 @@ internal static class FavoriteEndpoints
             return result.ToHttpResult();
         })
         .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Убрать рецепт из избранного")
         .WithDescription("""
             Удаляет рецепт из избранного. Если рецепт не был в избранном — реакция 204 (идемпотентно).

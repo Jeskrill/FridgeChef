@@ -35,6 +35,7 @@ internal static class AuthEndpoints
         })
         .Produces<AuthTokensResponse>(StatusCodes.Status201Created)
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Регистрация пользователя")
         .WithDescription("Создаёт новую учётную запись. После регистрации возвращается пара JWT-токенов.");
 
@@ -96,6 +97,7 @@ internal static class AuthEndpoints
             var result = await handler.HandleAsync(userId, ct);
             return result.ToHttpResult();
         })
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .RequireAuthorization()
         .Produces(StatusCodes.Status204NoContent)
         .WithSummary("Выход из системы")

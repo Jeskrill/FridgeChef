@@ -21,6 +21,7 @@ internal static class ProfileEndpoints
         })
         .Produces<UserProfileResponse>()
         .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Профиль пользователя")
         .WithDescription("""
             Возвращает публичные данные текущего авторизованного пользователя:
@@ -45,6 +46,7 @@ internal static class ProfileEndpoints
         })
         .Produces<UserProfileResponse>()
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Обновление профиля")
         .WithDescription("""
             Частичное обновление профиля. Необходимо передать хотя бы одно поле.
@@ -71,6 +73,7 @@ internal static class ProfileEndpoints
         })
         .Produces(StatusCodes.Status204NoContent)
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Смена пароля")
         .WithDescription("""
             Изменяет пароль текущего пользователя.
