@@ -59,9 +59,7 @@ internal sealed class UnitRepository : IUnitRepository
     }
 }
 
-/// <summary>
-/// Handles food hierarchy expansion queries.
-/// </summary>
+// Handles food hierarchy expansion queries.
 internal sealed class FoodHierarchyRepository : IFoodHierarchyRepository
 {
     private readonly OntologyDbContext _db;
@@ -126,7 +124,7 @@ internal sealed class TaxonRepository : ITaxonRepository
         Slug: e.Slug,
         Description: e.Description);
 
-    /// <summary>Converts PascalCase enum name to snake_case for DB lookup.</summary>
+    // Converts PascalCase enum name to snake_case for DB lookup.
     private static string ToSnakeCase(string name) =>
         string.Concat(name.Select((c, i) =>
             i > 0 && char.IsUpper(c) ? "_" + char.ToLower(c) : char.ToLower(c).ToString()));

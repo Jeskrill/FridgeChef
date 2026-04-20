@@ -1,8 +1,6 @@
 namespace FridgeChef.Pricing.Application;
 
-/// <summary>
-/// Product scraped from a retailer search page.
-/// </summary>
+// Товар, найденный при поиске на сайте ретейлера.
 public sealed record ScrapedProduct(
     string ExternalSku,
     string Title,
@@ -11,38 +9,28 @@ public sealed record ScrapedProduct(
     decimal? DiscountPrice,
     string ProductUrl);
 
-/// <summary>
-/// Scrapes product search results from an online retailer.
-/// </summary>
+// Интерфейс скрапера — выполняет поиск товаров в онлайн-ретейлере.
 public interface IRetailerScraper
 {
-    /// <summary>Retailer code (e.g. "pyaterochka").</summary>
+    // Код ретейлера, например "pyaterochka".
     string RetailerCode { get; }
 
-    /// <summary>
-    /// Searches the retailer for the given ingredient query.
-    /// Returns the first page of results ordered by relevance.
-    /// </summary>
+    // Ищет товар в ретейлере по названию ингредиента.
+    // Возвращает первую страницу результатов в порядке релевантности.
     Task<IReadOnlyList<ScrapedProduct>> SearchAsync(string query, CancellationToken ct = default);
 }
 
-/// <summary>
-/// Extended scraper interface that supports batch queries.
-/// Implemented by scrapers that maintain a persistent session (e.g. Puppeteer sidecar).
-/// </summary>
+// Расширенный скрапер с поддержкой пакетных запросов.
+// Реализуется скраперами с постоянной сессией (например Puppeteer sidecar).
 public interface IBatchRetailerScraper : IRetailerScraper
 {
-    /// <summary>
-    /// Searches for multiple queries in one call.
-    /// Returns a dictionary keyed by original query string.
-    /// </summary>
+    // Ищет несколько запросов за один вызов.
+    // Возвращает словарь с ключами по оригинальной строке запроса.
     Task<Dictionary<string, IReadOnlyList<ScrapedProduct>>> SearchBatchAsync(
         IReadOnlyList<string> queries, CancellationToken ct = default);
 }
 
-/// <summary>
-/// Persists scraped price data into the pricing schema.
-/// </summary>
+// Сохраняет данные о ценах из скрапера в схему базы данных.
 public interface IPriceSyncRepository
 {
     Task<long> EnsureRetailerAsync(string code, string name, string baseUrl, CancellationToken ct = default);
@@ -67,7 +55,5 @@ public interface IPriceSyncRepository
     Task<IReadOnlyList<IngredientToScrape>> GetActiveIngredientsAsync(CancellationToken ct = default);
 }
 
-/// <summary>
-/// An ingredient that needs a price lookup.
-/// </summary>
+// Ингредиент, для которого требуется получить цену.
 public sealed record IngredientToScrape(long FoodNodeId, string CanonicalName);

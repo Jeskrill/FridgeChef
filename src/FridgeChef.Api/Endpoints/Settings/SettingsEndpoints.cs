@@ -1,6 +1,7 @@
-using FridgeChef.Application.Settings;
+using FridgeChef.UserPreferences.Application.UseCases;
 using FridgeChef.Api.Middleware;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Settings;
 
@@ -8,17 +9,27 @@ internal static class SettingsEndpoints
 {
     public static void MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/settings").WithTags("Settings").RequireAuthorization();
+        var group = app.MapGroup("/settings")
+            .WithTags("Settings")
+            .RequireAuthorization();
 
-        // Allergens
-        group.MapGet("/allergens", async (HttpContext http, GetAllergensHandler handler, CancellationToken ct) =>
-            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)));
+        // ── Allergens ───────────────────────────────────────────────────────────
+
+        group.MapGet("/allergens", async (HttpContext http, [FromServices] GetAllergensHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
+        .Produces<IReadOnlyList<AllergenResponse>>()
+        .WithSummary("Аллергены пользователя")
+        .WithDescription("""
+            Возвращает список аллергенов пользователя.
+            Рецепты, содержащие эти продукты, исключаются из результатов подбора.
+            Требуется JWT-авторизация.
+            """);
 
         group.MapPost("/allergens", async (
             HttpContext http,
             AddAllergenRequest request,
             IValidator<AddAllergenRequest> validator,
-            AddAllergenHandler handler,
+            [FromServices] AddAllergenHandler handler,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -27,31 +38,49 @@ internal static class SettingsEndpoints
 
             var result = await handler.HandleAsync(http.User.GetUserId(), request, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .WithSummary("Добавить аллерген")
+        .WithDescription("""
+            Добавляет продукт в список аллергенов.
+            - `foodNodeId` — ID продукта из онтологии (`GET /food-nodes?q=...`)
+            - `severity` — `strict` (полное исключение) или `mild` (предупреждение)
 
-        group.MapDelete("/allergens/{foodNodeId:long}", async (long foodNodeId, HttpContext http, RemoveAllergenHandler handler, CancellationToken ct) =>
+            Требуется JWT-авторизация.
+            """);
+
+        group.MapDelete("/allergens/{foodNodeId:long}", async (
+            long foodNodeId, HttpContext http, [FromServices] RemoveAllergenHandler handler, CancellationToken ct) =>
         {
             if (foodNodeId <= 0)
-            {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["foodNodeId"] = ["Food node ID must be positive."]
-                });
-            }
+                    { ["foodNodeId"] = ["ID должен быть положительным."] });
 
             var result = await handler.HandleAsync(http.User.GetUserId(), foodNodeId, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .WithSummary("Удалить аллерген")
+        .WithDescription("Удаляет продукт из списка аллергенов. Требуется JWT-авторизация.");
 
-        // Favorite Foods
-        group.MapGet("/favorite-foods", async (HttpContext http, GetFavoriteFoodsHandler handler, CancellationToken ct) =>
-            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)));
+        // ── Favorite Foods ──────────────────────────────────────────────────────
+
+        group.MapGet("/favorite-foods", async (HttpContext http, [FromServices] GetFavoriteFoodsHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
+        .Produces<IReadOnlyList<FavoriteFoodResponse>>()
+        .WithSummary("Любимые продукты")
+        .WithDescription("""
+            Возвращает список любимых продуктов пользователя.
+            Рецепты с этими продуктами получают повышенный рейтинг при подборе.
+            Требуется JWT-авторизация.
+            """);
 
         group.MapPost("/favorite-foods", async (
             HttpContext http,
             AddFavoriteFoodRequest request,
             IValidator<AddFavoriteFoodRequest> validator,
-            AddFavoriteFoodHandler handler,
+            [FromServices] AddFavoriteFoodHandler handler,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -60,31 +89,42 @@ internal static class SettingsEndpoints
 
             var result = await handler.HandleAsync(http.User.GetUserId(), request, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .WithSummary("Добавить любимый продукт")
+        .WithDescription("Добавляет продукт в список любимых. Требуется JWT-авторизация.");
 
-        group.MapDelete("/favorite-foods/{foodNodeId:long}", async (long foodNodeId, HttpContext http, RemoveFavoriteFoodHandler handler, CancellationToken ct) =>
+        group.MapDelete("/favorite-foods/{foodNodeId:long}", async (
+            long foodNodeId, HttpContext http, [FromServices] RemoveFavoriteFoodHandler handler, CancellationToken ct) =>
         {
             if (foodNodeId <= 0)
-            {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["foodNodeId"] = ["Food node ID must be positive."]
-                });
-            }
+                    { ["foodNodeId"] = ["ID должен быть положительным."] });
 
             var result = await handler.HandleAsync(http.User.GetUserId(), foodNodeId, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .WithSummary("Удалить любимый продукт")
+        .WithDescription("Удаляет продукт из списка любимых. Требуется JWT-авторизация.");
 
-        // Excluded Foods
-        group.MapGet("/excluded-foods", async (HttpContext http, GetExcludedFoodsHandler handler, CancellationToken ct) =>
-            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)));
+        // ── Excluded Foods ──────────────────────────────────────────────────────
+
+        group.MapGet("/excluded-foods", async (HttpContext http, [FromServices] GetExcludedFoodsHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
+        .Produces<IReadOnlyList<ExcludedFoodResponse>>()
+        .WithSummary("Исключённые продукты")
+        .WithDescription("""
+            Возвращает список продуктов, которые пользователь не хочет видеть в рецептах.
+            Отличается от аллергенов: не исключает рецепты, а понижает их рейтинг.
+            Требуется JWT-авторизация.
+            """);
 
         group.MapPost("/excluded-foods", async (
             HttpContext http,
             AddExcludedFoodRequest request,
             IValidator<AddExcludedFoodRequest> validator,
-            AddExcludedFoodHandler handler,
+            [FromServices] AddExcludedFoodHandler handler,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -93,31 +133,42 @@ internal static class SettingsEndpoints
 
             var result = await handler.HandleAsync(http.User.GetUserId(), request, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .WithSummary("Добавить исключённый продукт")
+        .WithDescription("Добавляет продукт в список нежелательных. Требуется JWT-авторизация.");
 
-        group.MapDelete("/excluded-foods/{foodNodeId:long}", async (long foodNodeId, HttpContext http, RemoveExcludedFoodHandler handler, CancellationToken ct) =>
+        group.MapDelete("/excluded-foods/{foodNodeId:long}", async (
+            long foodNodeId, HttpContext http, [FromServices] RemoveExcludedFoodHandler handler, CancellationToken ct) =>
         {
             if (foodNodeId <= 0)
-            {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
-                {
-                    ["foodNodeId"] = ["Food node ID must be positive."]
-                });
-            }
+                    { ["foodNodeId"] = ["ID должен быть положительным."] });
 
             var result = await handler.HandleAsync(http.User.GetUserId(), foodNodeId, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .WithSummary("Удалить продукт из исключений")
+        .WithDescription("Удаляет продукт из списка нежелательных. Требуется JWT-авторизация.");
 
-        // Diets
-        group.MapGet("/diets", async (HttpContext http, GetDietsHandler handler, CancellationToken ct) =>
-            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)));
+        // ── Diets ───────────────────────────────────────────────────────────────
+
+        group.MapGet("/diets", async (HttpContext http, [FromServices] GetDietsHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
+        .Produces<IReadOnlyList<UserDietResponse>>()
+        .WithSummary("Диеты по умолчанию")
+        .WithDescription("""
+            Возвращает диетические предпочтения пользователя, применяемые при подборе рецептов.
+            Список доступных диет: `GET /taxons?kind=Diet`.
+            Требуется JWT-авторизация.
+            """);
 
         group.MapPut("/diets", async (
             HttpContext http,
             UpdateDietsRequest request,
             IValidator<UpdateDietsRequest> validator,
-            UpdateDietsHandler handler,
+            [FromServices] UpdateDietsHandler handler,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -126,6 +177,52 @@ internal static class SettingsEndpoints
 
             var result = await handler.HandleAsync(http.User.GetUserId(), request, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .WithSummary("Обновить диеты по умолчанию")
+        .WithDescription("""
+            Полностью заменяет список диетических предпочтений.
+            Пустой массив `taxonIds: []` сбрасывает все диеты.
+            Максимум 50 уникальных ID. Список ID: `GET /taxons?kind=Diet`.
+            Требуется JWT-авторизация.
+            """);
+
+        // ── Cuisines ────────────────────────────────────────────────────────────
+
+        group.MapGet("/cuisines", async (HttpContext http, [FromServices] GetCuisinesHandler handler, CancellationToken ct) =>
+            Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
+        .Produces<IReadOnlyList<UserCuisineResponse>>()
+        .WithSummary("Предпочтительные кухни")
+        .WithDescription("""
+            Возвращает список nationally кухонь, предпочтительных для пользователя.
+            Рецепты из этих кухонь получают повышенный рейтинг при подборе и отображаются первыми.
+            Список доступных кухонь: `GET /taxons?kind=Cuisine`.
+            Требуется JWT-авторизация.
+            """);
+
+        group.MapPut("/cuisines", async (
+            HttpContext http,
+            UpdateCuisinesRequest request,
+            IValidator<UpdateCuisinesRequest> validator,
+            [FromServices] UpdateCuisinesHandler handler,
+            CancellationToken ct) =>
+        {
+            var validation = await validator.ValidateAsync(request, ct);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
+            var result = await handler.HandleAsync(http.User.GetUserId(), request, ct);
+            return result.ToHttpResult();
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .WithSummary("Обновить предпочтительные кухни")
+        .WithDescription("""
+            Полностью заменяет список предпочтительных кухонь.
+            Пустой массив `taxonIds: []` сбрасывает все предпочтения.
+            Максимум 20 уникальных ID. Список ID кухонь: `GET /taxons?kind=Cuisine`.
+            Требуется JWT-авторизация.
+            """);
     }
 }

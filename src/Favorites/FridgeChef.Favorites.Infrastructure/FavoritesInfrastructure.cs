@@ -60,6 +60,21 @@ internal sealed class FavoriteRecipeRepository : IFavoriteRecipeRepository
         await _db.SaveChangesAsync(ct);
     }
 
+
+    public Task<int> CountTotalAsync(CancellationToken ct = default) =>
+        _db.FavoriteRecipes.CountAsync(ct);
+
+    public async Task<IReadOnlyList<(Guid RecipeId, int Count)>> GetMostFavoritedAsync(
+        int limit, CancellationToken ct = default)
+    {
+        var result = await _db.FavoriteRecipes
+            .GroupBy(f => f.RecipeId)
+            .Select(g => new { RecipeId = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
+            .Take(limit)
+            .ToListAsync(ct);
+        return result.Select(x => (x.RecipeId, x.Count)).ToList();
+    }
     public async Task RemoveAsync(Guid userId, Guid recipeId, CancellationToken ct = default) =>
         await _db.FavoriteRecipes
             .Where(f => f.UserId == userId && f.RecipeId == recipeId)

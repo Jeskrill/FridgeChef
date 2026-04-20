@@ -1,4 +1,3 @@
-using FridgeChef.Application.Pricing;
 using FridgeChef.Pricing.Application;
 using FridgeChef.Pricing.Infrastructure.Scraping;
 using FridgeChef.Pricing.Infrastructure;
@@ -12,10 +11,10 @@ internal static class PricingEndpoints
 
     public static void MapPricingEndpoints(this IEndpointRouteBuilder app)
     {
-        // GET /pricing/ingredients?ids=1,2,3
+        // ── GET /pricing/ingredients ────────────────────────────────────────────
         app.MapGet("/pricing/ingredients", async (
-            long[] ids,
-            GetPricesHandler handler,
+            [FromQuery] long[] ids,
+            [FromServices] GetPricesHandler handler,
             CancellationToken ct) =>
         {
             if (ids.Any(id => id <= 0))
@@ -42,9 +41,20 @@ internal static class PricingEndpoints
         })
         .WithTags("Pricing")
         .Produces<IReadOnlyList<IngredientPriceResponse>>()
-        .WithSummary("Цены на ингредиенты по food node IDs");
+        .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .WithSummary("Цены на ингредиенты")
+        .WithDescription("""
+            Возвращает актуальные цены на ингредиенты по их FoodNode ID.
+            Данные парсятся из Пятёрочки через Puppeteer-sidecar и кешируются в базе.
 
-        // ─── Admin endpoints ───────────────────────────────────────────
+            **Параметр `ids`** — один или несколько ID food-node (максимум 100 за запрос).
+            Пример: `GET /pricing/ingredients?ids=1&ids=2&ids=5`
+
+            Если для FoodNode цена не найдена, элемент не включается в ответ.
+            Открытый эндпоинт, авторизация не нужна.
+            """);
+
+        // ── Admin Pricing ───────────────────────────────────────────────────────
         var adminGroup = app.MapGroup("/admin/pricing")
             .WithTags("Admin - Pricing")
             .RequireAuthorization("AdminOnly")
@@ -52,7 +62,7 @@ internal static class PricingEndpoints
 
         // GET /admin/pricing/status
         adminGroup.MapGet("/status", async (
-            PriceSyncRunner priceSyncRunner,
+            [FromServices] PriceSyncRunner priceSyncRunner,
             PuppeteerPyaterochkaScraper scraper,
             CancellationToken ct) =>
         {
@@ -69,11 +79,24 @@ internal static class PricingEndpoints
                     : "Ready. POST to /admin/pricing/sync to start.",
             });
         })
-        .WithSummary("Статус scraper sidecar");
+        .Produces(StatusCodes.Status200OK)
+        .WithSummary("Статус Puppeteer-sidecar")
+        .WithDescription("""
+            Проверяет доступность Puppeteer Node.js sidecar, который используется
+            для скрапинга цен с сайта Пятёрочки (5ka.ru).
+
+            Возвращает:
+            - `sidecarReady` — доступен ли sidecar
+            - `sidecarError` — причина недоступности (если есть)
+            - `syncRunning` — идёт ли сейчас синхронизация
+            - `instructions` — как запустить sidecar если он недоступен
+
+            **Только для администраторов.**
+            """);
 
         // POST /admin/pricing/sync
         adminGroup.MapPost("/sync", async (
-            PriceSyncRunner priceSyncRunner,
+            [FromServices] PriceSyncRunner priceSyncRunner,
             CancellationToken ct) =>
         {
             var started = await priceSyncRunner.TryRunAsync(ct);
@@ -87,7 +110,20 @@ internal static class PricingEndpoints
 
             return Results.Ok(new { message = "Sync completed" });
         })
-        .WithSummary("Запустить синхронизацию цен вручную");
+        .Produces(StatusCodes.Status200OK)
+        .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+        .WithSummary("Запустить синхронизацию цен вручную")
+        .WithDescription("""
+            Запускает полную синхронизацию цен: для каждого активного FoodNode
+            ищет товар в Пятёрочке и сохраняет текущую цену в базу данных.
+
+            Запрос блокирующий — завершится только когда синхронизация закончится.
+            В production рекомендуется ScheduledJob.
+
+            Возвращает 409 если синхронизация уже запущена.
+
+            **Только для администраторов.**
+            """);
 
         // POST /admin/pricing/reconnect
         adminGroup.MapPost("/reconnect", async (
@@ -97,7 +133,13 @@ internal static class PricingEndpoints
             await scraper.RestartBrowserAsync(ct);
             return Results.Ok(new { message = "Browser restart requested" });
         })
-        .WithSummary("Переподключиться к Chrome");
+        .Produces(StatusCodes.Status200OK)
+        .WithSummary("Переподключиться к Chrome")
+        .WithDescription("""
+            Перезапускает соединение с Chrome Remote Debugging в Puppeteer sidecar.
+            Используйте если scraper завис или потерял сессию (например после блокировки WAF Пятёрочки).
+            **Только для администраторов.**
+            """);
 
         // POST /admin/pricing/search-test
         adminGroup.MapPost("/search-test", async (
@@ -121,7 +163,19 @@ internal static class PricingEndpoints
                 products = products.Take(5),
             });
         })
-        .WithSummary("Тестовый поиск товаров в Пятёрочке");
+        .Produces(StatusCodes.Status200OK)
+        .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .WithSummary("Тестовый поиск товаров в Пятёрочке")
+        .WithDescription("""
+            Выполняет тестовый поиск товара по названию на 5ka.ru через Puppeteer sidecar.
+            Возвращает первые 5 найденных товаров с ценами.
+            Используется для диагностики маппинга FoodNode → SKU Пятёрочки.
+
+            **Тело запроса:**
+            - `query` — поисковый запрос (например `"Молоко 3.2%"`)
+
+            **Только для администраторов.**
+            """);
     }
 }
 

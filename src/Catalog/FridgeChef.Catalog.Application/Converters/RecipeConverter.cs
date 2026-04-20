@@ -3,10 +3,8 @@ using FridgeChef.Catalog.Domain;
 
 namespace FridgeChef.Catalog.Application.Converters;
 
-/// <summary>
-/// Converts Domain records to API-facing DTOs.
-/// Domain model → Response DTO. No DB knowledge here.
-/// </summary>
+// Converts Domain records to API-facing DTOs.
+// Domain model → Response DTO. No DB knowledge here.
 public static class RecipeConverter
 {
     public static RecipeCardResponse ToCardDto(this Recipe recipe) => new(

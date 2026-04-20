@@ -1,4 +1,4 @@
-using FridgeChef.Domain.Common;
+using FridgeChef.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -6,9 +6,7 @@ using Npgsql;
 
 namespace FridgeChef.Api.Middleware;
 
-/// <summary>
-/// Global exception handler returning ProblemDetails (RFC 7807).
-/// </summary>
+// Global exception handler returning ProblemDetails (RFC 7807).
 internal sealed class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
@@ -81,9 +79,7 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
     }
 }
 
-/// <summary>
-/// Extension methods for mapping Result to HTTP responses.
-/// </summary>
+// Extension methods for mapping Result to HTTP responses.
 internal static class ResultExtensions
 {
     public static IResult ToHttpResult<T>(this Result<T> result, int successStatus = StatusCodes.Status200OK) =>

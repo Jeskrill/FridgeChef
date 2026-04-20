@@ -38,6 +38,12 @@ internal sealed class UserRepository : IUserRepository
         _db.Users.Update(entity);
         await _db.SaveChangesAsync(ct);
     }
+
+    public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default)
+    {
+        var entities = await _db.Users.OrderByDescending(u => u.CreatedAt).ToListAsync(ct);
+        return entities.Select(e => e.ToDomain()).ToList();
+    }
 }
 
 internal sealed class RefreshTokenRepository : IRefreshTokenRepository

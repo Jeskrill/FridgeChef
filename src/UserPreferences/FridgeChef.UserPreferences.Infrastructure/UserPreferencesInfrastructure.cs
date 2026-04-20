@@ -8,6 +8,13 @@ namespace FridgeChef.UserPreferences.Infrastructure;
 
 // ── Internal EF entities ──────────────────────────────────────────
 
+
+internal sealed class UserPreferredCuisineEntity
+{
+    public Guid UserId { get; set; }
+    public long TaxonId { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
 internal sealed class UserAllergenEntity
 {
     public Guid UserId { get; set; }
@@ -51,6 +58,7 @@ internal sealed class UserPreferencesDbContext : DbContext
     internal DbSet<UserExcludedFoodEntity> UserExcludedFoods => Set<UserExcludedFoodEntity>();
     internal DbSet<UserFavoriteFoodEntity> UserFavoriteFoods => Set<UserFavoriteFoodEntity>();
     internal DbSet<UserDefaultDietEntity> UserDefaultDiets => Set<UserDefaultDietEntity>();
+    internal DbSet<UserPreferredCuisineEntity> UserPreferredCuisines => Set<UserPreferredCuisineEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,6 +83,11 @@ internal sealed class UserPreferencesDbContext : DbContext
         modelBuilder.Entity<UserDefaultDietEntity>().Property(e => e.UserId).HasColumnName("user_id");
         modelBuilder.Entity<UserDefaultDietEntity>().Property(e => e.TaxonId).HasColumnName("taxon_id");
         modelBuilder.Entity<UserDefaultDietEntity>().Property(e => e.CreatedAt).HasColumnName("created_at");
+
+        modelBuilder.Entity<UserPreferredCuisineEntity>().ToTable("user_preferred_cuisines", "user_domain").HasKey(e => new { e.UserId, e.TaxonId });
+        modelBuilder.Entity<UserPreferredCuisineEntity>().Property(e => e.UserId).HasColumnName("user_id");
+        modelBuilder.Entity<UserPreferredCuisineEntity>().Property(e => e.TaxonId).HasColumnName("taxon_id");
+        modelBuilder.Entity<UserPreferredCuisineEntity>().Property(e => e.CreatedAt).HasColumnName("created_at");
     }
 }
 
@@ -161,6 +174,26 @@ internal sealed class UserPreferencesRepository : IUserPreferencesRepository
     public async Task<IReadOnlySet<long>> GetDefaultDietTaxonIdsAsync(Guid userId, CancellationToken ct = default)
     {
         var ids = await _db.UserDefaultDiets.Where(d => d.UserId == userId).Select(d => d.TaxonId).ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    public async Task<IReadOnlyList<UserPreferredCuisine>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct = default)
+    {
+        var entities = await _db.UserPreferredCuisines.Where(c => c.UserId == userId).ToListAsync(ct);
+        return entities.Select(e => new UserPreferredCuisine(e.UserId, e.TaxonId, e.CreatedAt)).ToList();
+    }
+
+    public async Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default)
+    {
+        await _db.UserPreferredCuisines.Where(c => c.UserId == userId).ExecuteDeleteAsync(ct);
+        var newCuisines = taxonIds.Select(id => new UserPreferredCuisineEntity { UserId = userId, TaxonId = id, CreatedAt = DateTime.UtcNow });
+        _db.UserPreferredCuisines.AddRange(newCuisines);
+        await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlySet<long>> GetPreferredCuisineTaxonIdsAsync(Guid userId, CancellationToken ct = default)
+    {
+        var ids = await _db.UserPreferredCuisines.Where(c => c.UserId == userId).Select(c => c.TaxonId).ToListAsync(ct);
         return ids.ToHashSet();
     }
 }

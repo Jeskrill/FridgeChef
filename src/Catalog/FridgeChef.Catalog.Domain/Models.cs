@@ -19,10 +19,8 @@ public enum MediaKind
 //  Aggregate Root
 // ────────────────────────────────────────────────────────────────────
 
-/// <summary>
-/// Recipe aggregate root — immutable domain representation.
-/// Does NOT reference EF Core or any persistence concern.
-/// </summary>
+// Recipe aggregate root — immutable domain representation.
+// Does NOT reference EF Core or any persistence concern.
 public sealed record Recipe(
     Guid Id,
     long SourceRecipeId,

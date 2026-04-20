@@ -33,10 +33,8 @@ public static class OntologyInfrastructureExtensions
     }
 }
 
-/// <summary>
-/// Adapter: wraps IFoodHierarchyRepository to satisfy IFoodHierarchySupplier (from Catalog.Application).
-/// Keeps BC coupling at the DI registration level, not at the interface level.
-/// </summary>
+// Adapter: wraps IFoodHierarchyRepository to satisfy IFoodHierarchySupplier (from Catalog.Application).
+// Keeps BC coupling at the DI registration level, not at the interface level.
 internal sealed class FoodHierarchySupplierAdapter : IFoodHierarchySupplier
 {
     private readonly IFoodHierarchyRepository _hierarchy;

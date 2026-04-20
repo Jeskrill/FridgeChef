@@ -20,8 +20,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FridgeChef.Application\FridgeChef.Application.csproj" />
-    <ProjectReference Include="..\..\src\FridgeChef.Domain\FridgeChef.Domain.csproj" />
+    <!-- Bounded context Application проекты -->
+    <ProjectReference Include="..\..\src\Auth\FridgeChef.Auth.Application\FridgeChef.Auth.Application.csproj" />
+    <ProjectReference Include="..\..\src\Pantry\FridgeChef.Pantry.Application\FridgeChef.Pantry.Application.csproj" />
+    <ProjectReference Include="..\..\src\Favorites\FridgeChef.Favorites.Application\FridgeChef.Favorites.Application.csproj" />
+    <!-- Domain-проекты для создания stub-объектов в тестах -->
+    <ProjectReference Include="..\..\src\Auth\FridgeChef.Auth.Domain\FridgeChef.Auth.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Pantry\FridgeChef.Pantry.Domain\FridgeChef.Pantry.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Favorites\FridgeChef.Favorites.Domain\FridgeChef.Favorites.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Shared\FridgeChef.SharedKernel\FridgeChef.SharedKernel.csproj" />
+    <!-- Pricing -->
     <ProjectReference Include="..\..\src\Pricing\FridgeChef.Pricing.Application\FridgeChef.Pricing.Application.csproj" />
     <ProjectReference Include="..\..\src\Pricing\FridgeChef.Pricing.Infrastructure\FridgeChef.Pricing.Infrastructure.csproj" />
   </ItemGroup>

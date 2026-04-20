@@ -119,9 +119,7 @@ internal sealed class PantryRepository : IPantryRepository
     };
 }
 
-/// <summary>
-/// Adapter: wraps PantryRepository to satisfy IPantrySupplier for MatchFromPantry use case.
-/// </summary>
+// Adapter: wraps PantryRepository to satisfy IPantrySupplier for MatchFromPantry use case.
 internal sealed class PantrySupplierAdapter : IPantrySupplier
 {
     private readonly IPantryRepository _pantry;

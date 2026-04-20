@@ -1,0 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+body,
+.swagger-ui,
+.swagger-ui *:not(pre):not(code):not(.microlight) {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+.swagger-ui pre,
+.swagger-ui code,
+.microlight {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}

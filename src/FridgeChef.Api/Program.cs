@@ -2,11 +2,23 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
 using System.Text;
+using FridgeChef.Api.CrossBc;
 using FridgeChef.Api.Extensions;
 using FridgeChef.Api.Middleware;
-using FridgeChef.Application.DependencyInjection;
-using FridgeChef.Infrastructure.DependencyInjection;
-using FridgeChef.Infrastructure.Security;
+using FridgeChef.Auth.Application.DependencyInjection;
+using FridgeChef.Auth.Infrastructure;
+using FridgeChef.Auth.Infrastructure.Security;
+using FridgeChef.Catalog.Application;
+using FridgeChef.Catalog.Infrastructure;
+using FridgeChef.Pantry.Application.DependencyInjection;
+using FridgeChef.Pantry.Infrastructure;
+using FridgeChef.Favorites.Application.DependencyInjection;
+using FridgeChef.Favorites.Infrastructure;
+using FridgeChef.UserPreferences.Application.DependencyInjection;
+using FridgeChef.UserPreferences.Infrastructure;
+using FridgeChef.Ontology.Application.DependencyInjection;
+using FridgeChef.Ontology.Infrastructure;
+using FridgeChef.Admin.Application.DependencyInjection;
 using FridgeChef.Pricing.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
@@ -20,11 +32,24 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((ctx, cfg) =>
     cfg.ReadFrom.Configuration(ctx.Configuration));
 
-// ── Infrastructure ──
-builder.Services.AddInfrastructureServices(builder.Configuration);
+// ── Bounded Context Infrastructure ──
+builder.Services.AddAuthInfrastructure(builder.Configuration);
+builder.Services.AddCatalogInfrastructure(builder.Configuration);
+builder.Services.AddPantryInfrastructure(builder.Configuration);
+builder.Services.AddFavoritesInfrastructure(builder.Configuration);
+builder.Services.AddUserPreferencesInfrastructure(builder.Configuration);
+builder.Services.AddOntologyInfrastructure(builder.Configuration);
 builder.Services.AddPricingInfrastructure(builder.Configuration);
-// ── Application ──
-builder.Services.AddApplicationServices();
+
+// ── Bounded Context Application ──
+builder.Services.AddAuthApplication();
+builder.Services.AddCatalogApplication();
+builder.Services.AddPantryApplication();
+builder.Services.AddFavoritesApplication();
+builder.Services.AddUserPreferencesApplication();
+builder.Services.AddOntologyApplication();
+builder.Services.AddAdminApplication();
+builder.Services.AddCrossBcAdapters(); // кросс-BC адаптеры: Catalog→Favorites, Auth/Catalog/Favorites→Admin
 
 // ── Authentication ──
 var jwtSecret = builder.Configuration.GetRequiredJwtSecret();
@@ -114,7 +139,30 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new() { Title = "FridgeChef API", Version = "v1" });
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "FridgeChef API",
+        Version = "v1",
+        Description = """
+            **FridgeChef** — сервис подбора рецептов из продуктов в вашем холодильнике.
+
+            | Понятие | Что это |
+            |---------|--------|
+            | **FoodNode** | Продукт в базе знаний. Иерархичен: «Молоко» → «Цельное молоко 3.2%» |
+            | **Pantry (Холодильник)** | Список продуктов пользователя с количеством |
+            | **Теги / Категории** | Диеты, кухни, типы блюд для фильтрации |
+
+            Защищённые эндпоинты требуют JWT. Авторизуйтесь через кнопку **Authorize** вверху страницы.
+            """,
+        Contact = new Microsoft.OpenApi.Models.OpenApiContact
+        {
+            Name = "FridgeChef Team",
+            Email = "dev@fridgechef.ru"
+        }
+    });
+
+    options.DocumentFilter<TagDescriptionsDocumentFilter>();
+    options.OperationFilter<RequestExamplesOperationFilter>();
 
     options.AddSecurityDefinition("Bearer", new()
     {
@@ -123,7 +171,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Введите JWT токен"
+        Description = "Вставьте access-токен из /auth/login"
     });
 
     options.AddSecurityRequirement(new()
@@ -152,6 +200,7 @@ var app = builder.Build();
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.UseResponseCompression();
+app.UseStaticFiles();
 app.UseCors();
 app.UseAuthentication();
 app.UseRateLimiter();
@@ -164,7 +213,12 @@ app.MapHealthChecks("/health");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "FridgeChef API v1"));
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "FridgeChef API v1");
+        c.InjectStylesheet("/swagger-ui/custom.css");
+        c.DocumentTitle = "FridgeChef API";
+    });
 }
 
 Log.Information("FridgeChef API starting on {Urls}", string.Join(", ", app.Urls));

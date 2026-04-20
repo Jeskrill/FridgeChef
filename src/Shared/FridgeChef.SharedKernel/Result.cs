@@ -2,18 +2,14 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace FridgeChef.SharedKernel;
 
-/// <summary>
-/// Represents a domain error with a machine-readable code and human-readable message.
-/// </summary>
+// Represents a domain error with a machine-readable code and human-readable message.
 public sealed record DomainError(string Code, string Message)
 {
     public override string ToString() => $"{Code}: {Message}";
 }
 
-/// <summary>
-/// Represents the result of an operation that can succeed or fail with an error.
-/// Uses Result pattern instead of exceptions for expected business errors.
-/// </summary>
+// Represents the result of an operation that can succeed or fail with an error.
+// Uses Result pattern instead of exceptions for expected business errors.
 public sealed class Result<TValue>
 {
     private readonly TValue? _value;
@@ -53,14 +49,14 @@ public sealed class Result<TValue>
     public static implicit operator Result<TValue>(TValue value) => Success(value);
     public static implicit operator Result<TValue>(DomainError error) => Failure(error);
 
-    /// <summary>Pattern-match on success/failure.</summary>
+    // Pattern-match on success/failure.
     public TResult Match<TResult>(
         Func<TValue, TResult> success,
         Func<DomainError, TResult> failure) =>
         IsSuccess ? success(_value) : failure(_error);
 }
 
-/// <summary>Non-generic result for void operations.</summary>
+// Non-generic result for void operations.
 public sealed class Result
 {
     private readonly DomainError? _error;

@@ -1,3 +1,4 @@
+using FluentValidation;
 using FridgeChef.Catalog.Application.Converters;
 using FridgeChef.Catalog.Application.Dto;
 using FridgeChef.Catalog.Domain;
@@ -8,6 +9,15 @@ public sealed record MatchRequest(
     long[]? DietFilterIds = null,
     int MaxResults = 50);
 
+// Валидация запроса на подбор рецептов из холодильника.
+public sealed class MatchRequestValidator : AbstractValidator<MatchRequest>
+{
+    public MatchRequestValidator()
+    {
+        RuleFor(x => x.MaxResults).InclusiveBetween(1, 200).WithMessage("Максимум результатов должен быть от 1 до 200.");
+    }
+}
+
 public sealed record MatchResultResponse(
     RecipeCardResponse Recipe,
     double Score,
@@ -15,10 +25,8 @@ public sealed record MatchResultResponse(
     int TotalIngredientCount,
     IReadOnlyList<string> MissingIngredients);
 
-/// <summary>
-/// Matches recipes to user's pantry using food node hierarchy expansion.
-/// Depends on pantry, preferences, ontology (via interfaces defined in their respective Domains).
-/// </summary>
+// Matches recipes to user's pantry using food node hierarchy expansion.
+// Depends on pantry, preferences, ontology (via interfaces defined in their respective Domains).
 public sealed class MatchFromPantryHandler
 {
     private readonly IPantrySupplier _pantry;
@@ -95,19 +103,19 @@ public sealed class MatchFromPantryHandler
 //  Each BC's Infrastructure implements its own supplier.
 // ────────────────────────────────────────────────────────────────────
 
-/// <summary>Abstracts pantry data access for the match use case.</summary>
+// Abstracts pantry data access for the match use case.
 public interface IPantrySupplier
 {
     Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct = default);
 }
 
-/// <summary>Abstracts user preferences access for the match use case.</summary>
+// Abstracts user preferences access for the match use case.
 public interface IUserPreferencesSupplier
 {
     Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
 }
 
-/// <summary>Abstracts food hierarchy expansion for the match use case.</summary>
+// Abstracts food hierarchy expansion for the match use case.
 public interface IFoodHierarchySupplier
 {
     Task<IReadOnlySet<long>> ExpandDescendantsAsync(IEnumerable<long> foodNodeIds, CancellationToken ct = default);

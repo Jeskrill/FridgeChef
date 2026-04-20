@@ -28,6 +28,12 @@ public sealed record UserDefaultDiet(
     long TaxonId,
     DateTime CreatedAt);
 
+// Кухонные предпочтения пользователя — рецепты из этих кухонь получают бонус к рейтингу.
+public sealed record UserPreferredCuisine(
+    Guid UserId,
+    long TaxonId,
+    DateTime CreatedAt);
+
 public interface IUserPreferencesRepository
 {
     Task<IReadOnlyList<UserAllergen>> GetAllergensAsync(Guid userId, CancellationToken ct = default);
@@ -44,6 +50,11 @@ public interface IUserPreferencesRepository
 
     Task<IReadOnlyList<UserDefaultDiet>> GetDefaultDietsAsync(Guid userId, CancellationToken ct = default);
     Task ReplaceDefaultDietsAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default);
+
+    // Кухонные предпочтения
+    Task<IReadOnlyList<UserPreferredCuisine>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct = default);
+    Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> GetPreferredCuisineTaxonIdsAsync(Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
     Task<IReadOnlySet<long>> GetFavoriteFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);

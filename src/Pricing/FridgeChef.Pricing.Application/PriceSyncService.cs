@@ -3,14 +3,11 @@ using Microsoft.Extensions.Options;
 
 namespace FridgeChef.Pricing.Application;
 
-/// <summary>
-/// Orchestrates the full price sync cycle: fetches all active
-/// ingredients, searches a retailer for each, and persists the best match.
-///
-/// Supports two modes:
-/// 1. Sequential: one query at a time via IRetailerScraper.SearchAsync
-/// 2. Batch: groups queries via IBatchRetailerScraper.SearchBatchAsync
-/// </summary>
+// Координирует полный цикл синхронизации цен: получает все активные ингредиенты,
+// ищет каждый в ретейлере и сохраняет лучшее совпадение.
+// Поддерживает два режима:
+// 1. Последовательный — один запрос за раз через IRetailerScraper.SearchAsync
+// 2. Пакетный — группирует запросы через IBatchRetailerScraper.SearchBatchAsync
 public sealed class PriceSyncService
 {
     private readonly IRetailerScraper _scraper;
@@ -18,7 +15,7 @@ public sealed class PriceSyncService
     private readonly ILogger<PriceSyncService> _logger;
     private readonly PriceSyncOptions _options;
 
-    /// <summary>Max parallel scrape tasks (for sequential mode only).</summary>
+    // Максимальное количество параллельных задач скрапинга (только для последовательного режима).
     private const int MaxParallelism = 4;
 
     public PriceSyncService(
@@ -66,9 +63,7 @@ public sealed class PriceSyncService
             stats.Succeeded, stats.Failed, stats.Skipped);
     }
 
-    /// <summary>
-    /// Batch mode: sends groups of queries to the scraper.
-    /// </summary>
+    // Пакетный режим: отправляет группы запросов в скрапер.
     private async Task<SyncStats> SyncBatchModeAsync(
         IBatchRetailerScraper scraper,
         long retailerId,
@@ -137,9 +132,7 @@ public sealed class PriceSyncService
         return stats;
     }
 
-    /// <summary>
-    /// Sequential mode: one query at a time (safe with scoped DbContext).
-    /// </summary>
+    // Последовательный режим: один запрос за раз (безопасно со scoped DbContext).
     private async Task<SyncStats> SyncSequentialModeAsync(
         long retailerId,
         IReadOnlyList<IngredientToScrape> ingredients,
@@ -189,7 +182,7 @@ public sealed class PriceSyncService
         await _repository.PersistBestMatchAsync(retailerId, ingredient, best, ct);
     }
 
-    /// <summary>Mutable counters for sync progress.</summary>
+    // Счётчики прогресса синхронизации.
     private sealed class SyncStats
     {
         public int Succeeded;

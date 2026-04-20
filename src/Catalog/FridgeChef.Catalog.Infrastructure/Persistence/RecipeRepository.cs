@@ -6,11 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FridgeChef.Catalog.Infrastructure.Persistence;
 
-/// <summary>
-/// Implements IRecipeRepository using EF Core + CatalogDbContext.
-/// Converts internal entities to domain records before returning.
-/// The Application layer never sees EF entities.
-/// </summary>
+// Implements IRecipeRepository using EF Core + CatalogDbContext.
+// Converts internal entities to domain records before returning.
+// The Application layer never sees EF entities.
 internal sealed class RecipeRepository : IRecipeRepository
 {
     private readonly CatalogDbContext _db;
@@ -125,6 +123,28 @@ internal sealed class RecipeRepository : IRecipeRepository
         return entities.Select(e => e.ToDomain()).ToList();
     }
 
+
+    public Task<int> CountAsync(CancellationToken ct = default) =>
+        _db.Recipes.CountAsync(ct);
+
+    public async Task<IReadOnlyList<RecipeSummary>> GetSummariesByIdsAsync(
+        IReadOnlyList<Guid> ids, CancellationToken ct = default)
+    {
+        var result = await _db.Recipes
+            .Where(r => ids.Contains(r.Id))
+            .Select(r => new
+            {
+                r.Id, r.Slug, r.Title,
+                ImageUrl = r.Media
+                    .Where(m => m.MediaKind == "hero")
+                    .Select(m => m.Url)
+                    .FirstOrDefault()
+            })
+            .ToListAsync(ct);
+        return result
+            .Select(r => new RecipeSummary(r.Id, r.Slug, r.Title, r.ImageUrl))
+            .ToList();
+    }
     public async Task UpdateStatusAsync(Guid id, RecipeStatus status, CancellationToken ct = default)
     {
         await _db.Recipes

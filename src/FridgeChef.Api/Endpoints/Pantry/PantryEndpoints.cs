@@ -1,6 +1,7 @@
-using FridgeChef.Application.Pantry;
+using FridgeChef.Pantry.Application.UseCases;
 using FridgeChef.Api.Middleware;
 using FluentValidation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Pantry;
 
@@ -8,19 +9,36 @@ internal static class PantryEndpoints
 {
     public static void MapPantryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/pantry").WithTags("Pantry").RequireAuthorization();
+        var group = app.MapGroup("/pantry")
+            .WithTags("Pantry")
+            .RequireAuthorization();
 
-        group.MapGet("/", async (HttpContext http, GetPantryItemsHandler handler, CancellationToken ct) =>
+        // ── GET /pantry ─────────────────────────────────────────────────────────
+        group.MapGet("/", async (HttpContext http, [FromServices] GetPantryItemsHandler handler, CancellationToken ct) =>
         {
             var result = await handler.HandleAsync(http.User.GetUserId(), ct);
             return Results.Ok(result);
-        });
+        })
+        .Produces<IReadOnlyList<PantryItemResponse>>()
+        .WithSummary("Содержимое холодильника")
+        .WithDescription("""
+            Возвращает список продуктов, добавленных пользователем в холодильник.
 
+            Каждый элемент содержит:
+            - `foodNodeId` — ID продукта из онтологии (`GET /food-nodes?q=...`)
+            - `quantity` — количество (может отсутствовать)
+            - `unitId` — ID единицы измерения (`GET /units`)
+            - `quantityMode` — режим: `Exact`, `PackageDefault`, `CountOnly`, `Unknown`
+
+            Требуется JWT-авторизация.
+            """);
+
+        // ── POST /pantry ────────────────────────────────────────────────────────
         group.MapPost("/", async (
             HttpContext http,
             AddPantryItemRequest request,
             IValidator<AddPantryItemRequest> validator,
-            AddPantryItemHandler handler,
+            [FromServices] AddPantryItemHandler handler,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -29,13 +47,27 @@ internal static class PantryEndpoints
 
             var result = await handler.HandleAsync(http.User.GetUserId(), request, ct);
             return result.ToHttpResult(StatusCodes.Status201Created);
-        });
+        })
+        .Produces<PantryItemResponse>(StatusCodes.Status201Created)
+        .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
+        .WithSummary("Добавить продукт в холодильник")
+        .WithDescription("""
+            Добавляет продукт в холодильник пользователя.
+            При попытке добавить уже существующий `foodNodeId` возвращается `409 Conflict`.
 
+            Поиск `foodNodeId` осуществляется через `GET /food-nodes?q=название`.
+            Список единиц измерения доступен по `GET /units`.
+
+            Требуется JWT-авторизация.
+            """);
+
+        // ── PATCH /pantry/{id} ──────────────────────────────────────────────────
         group.MapPatch("/{id:guid}", async (
             Guid id, HttpContext http,
             UpdatePantryItemRequest request,
             IValidator<UpdatePantryItemRequest> validator,
-            UpdatePantryItemHandler handler,
+            [FromServices] UpdatePantryItemHandler handler,
             CancellationToken ct) =>
         {
             var validation = await validator.ValidateAsync(request, ct);
@@ -44,15 +76,32 @@ internal static class PantryEndpoints
 
             var result = await handler.HandleAsync(http.User.GetUserId(), id, request, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces<PantryItemResponse>()
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .WithSummary("Обновить количество продукта")
+        .WithDescription("""
+            Частичное обновление записи в холодильнике. Необходимо передать хотя бы одно поле.
+            Возвращает `404`, если запись не найдена или принадлежит другому пользователю.
+            Требуется JWT-авторизация.
+            """);
 
+        // ── DELETE /pantry/{id} ─────────────────────────────────────────────────
         group.MapDelete("/{id:guid}", async (
             Guid id, HttpContext http,
-            RemovePantryItemHandler handler,
+            [FromServices] RemovePantryItemHandler handler,
             CancellationToken ct) =>
         {
             var result = await handler.HandleAsync(http.User.GetUserId(), id, ct);
             return result.ToHttpResult();
-        });
+        })
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces<ProblemDetails>(StatusCodes.Status404NotFound)
+        .WithSummary("Удалить продукт из холодильника")
+        .WithDescription("""
+            Удаляет запись из холодильника.
+            Возвращает `404`, если запись не найдена или принадлежит другому пользователю.
+            Требуется JWT-авторизация.
+            """);
     }
 }

@@ -3,10 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FridgeChef.Catalog.Infrastructure.Persistence;
 
-/// <summary>
-/// Catalog-scoped DbContext. Works exclusively with internal entities.
-/// Application and Domain layers never touch this class.
-/// </summary>
+// Catalog-scoped DbContext. Works exclusively with internal entities.
+// Application and Domain layers never touch this class.
 internal sealed class CatalogDbContext : DbContext
 {
     public CatalogDbContext(DbContextOptions<CatalogDbContext> options) : base(options)

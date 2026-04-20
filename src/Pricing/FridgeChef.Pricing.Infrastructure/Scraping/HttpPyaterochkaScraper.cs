@@ -6,23 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace FridgeChef.Pricing.Infrastructure.Scraping;
 
-/// <summary>
-/// Scrapes product prices from 5ka.ru using HttpClient with browser cookies.
-///
-/// 5ka.ru uses ServicePipe WAF that requires a JavaScript challenge to be solved
-/// first. Since solving this in .NET is impractical, the scraper requires
-/// pre-authenticated session cookies obtained from a real browser.
-///
-/// Cookie flow:
-/// 1. User visits 5ka.ru in their browser (auto-solves JS challenge)
-/// 2. Cookies are exported via admin API (or DevTools → copy as cURL)  
-/// 3. Scraper uses those cookies for all HttpClient requests
-/// 4. Cookies are valid for ~24 hours
-///
-/// Product data is embedded as __NEXT_DATA__ JSON in the SSR HTML:
-///   props.pageProps.initialData.search.products[]
-///   { id, name, slug, price, oldPrice, discount, brand }
-/// </summary>
+// Scrapes product prices from 5ka.ru using HttpClient with browser cookies.
+// 5ka.ru uses ServicePipe WAF that requires a JavaScript challenge to be solved
+// first. Since solving this in .NET is impractical, the scraper requires
+// pre-authenticated session cookies obtained from a real browser.
+// Cookie flow:
+// 1. User visits 5ka.ru in their browser (auto-solves JS challenge)
+// 2. Cookies are exported via admin API (or DevTools → copy as cURL)
+// 3. Scraper uses those cookies for all HttpClient requests
+// 4. Cookies are valid for ~24 hours
+// Product data is embedded as __NEXT_DATA__ JSON in the SSR HTML:
+// props.pageProps.initialData.search.products[]
+// { id, name, slug, price, oldPrice, discount, brand }
 public sealed class HttpPyaterochkaScraper : IRetailerScraper
 {
     private readonly ILogger<HttpPyaterochkaScraper> _logger;
@@ -61,10 +56,8 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
         _httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
     }
 
-    /// <summary>
-    /// Sets cookies from a raw cookie string (e.g. from browser DevTools).
-    /// Format: "name1=value1; name2=value2; ..."
-    /// </summary>
+    // Sets cookies from a raw cookie string (e.g. from browser DevTools).
+    // Format: "name1=value1; name2=value2; ..."
     public void SetCookies(string cookieString)
     {
         foreach (var part in cookieString.Split(';', StringSplitOptions.RemoveEmptyEntries))
@@ -84,9 +77,7 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
             cookieString.Split(';', StringSplitOptions.RemoveEmptyEntries).Length);
     }
 
-    /// <summary>
-    /// Checks if cookies have been set.
-    /// </summary>
+    // Checks if cookies have been set.
     public bool HasCookies => _cookiesSet;
 
     public async Task<IReadOnlyList<ScrapedProduct>> SearchAsync(

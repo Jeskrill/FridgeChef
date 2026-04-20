@@ -9,6 +9,9 @@ public sealed record GetCatalogRequest(
     string? Query = null,
     long[]? DietIds = null,
     long[]? CuisineIds = null,
+    string? CuisineName = null,
+    int? MaxTimeMin = null,
+    decimal? MaxKcal = null,
     int Page = 1,
     int PageSize = 20);
 

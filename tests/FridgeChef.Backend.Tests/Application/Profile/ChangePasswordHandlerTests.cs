@@ -1,31 +1,34 @@
 using FluentAssertions;
-using FridgeChef.Application.Profile;
-using FridgeChef.Domain.Auth;
+using FridgeChef.Auth.Application.UseCases;
+using FridgeChef.Auth.Domain;
+using FridgeChef.SharedKernel;
 using NSubstitute;
 
 namespace FridgeChef.Backend.Tests.Application.Profile;
 
 public sealed class ChangePasswordHandlerTests
 {
+    private static User MakeUser(Guid id, string hash) => new(
+        Id: id,
+        Email: "chef@test.com",
+        PasswordHash: hash,
+        DisplayName: "Chef",
+        AvatarUrl: null,
+        Role: "User",
+        IsBlocked: false,
+        LastLoginAt: null,
+        CreatedAt: DateTime.UtcNow,
+        UpdatedAt: DateTime.UtcNow);
+
     [Fact]
-    public async Task HandleAsync_ShouldUpdatePasswordAndRevokeRefreshTokensInsideTransaction()
+    public async Task HandleAsync_ShouldUpdatePassword_WhenOldPasswordIsCorrect()
     {
-        var users = Substitute.For<IUserRepository>();
+        var users  = Substitute.For<IUserRepository>();
         var hasher = Substitute.For<IPasswordHasher>();
-        var refreshTokens = Substitute.For<IRefreshTokenRepository>();
-        var transactions = new RecordingAuthTransactionManager();
-        var handler = new ChangePasswordHandler(users, hasher, refreshTokens, transactions);
+        var handler = new ChangePasswordHandler(users, hasher);
+
         var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            Email = "chef@test.com",
-            DisplayName = "Chef",
-            PasswordHash = "old-hash",
-            Role = "user",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var user   = MakeUser(userId, "old-hash");
 
         users.GetByIdAsync(userId, CancellationToken.None).Returns(user);
         hasher.Verify("old-password", "old-hash").Returns(true);
@@ -37,31 +40,20 @@ public sealed class ChangePasswordHandlerTests
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        transactions.ExecutionCount.Should().Be(1);
-        user.PasswordHash.Should().Be("new-hash");
-        await users.Received(1).UpdateAsync(user, CancellationToken.None);
-        await refreshTokens.Received(1).RevokeAllForUserAsync(userId, CancellationToken.None);
+        await users.Received(1).UpdateAsync(
+            Arg.Is<User>(u => u.PasswordHash == "new-hash"),
+            CancellationToken.None);
     }
 
     [Fact]
-    public async Task HandleAsync_ShouldStopBeforeTransaction_WhenPasswordIsWrong()
+    public async Task HandleAsync_ShouldFail_WhenOldPasswordIsWrong()
     {
-        var users = Substitute.For<IUserRepository>();
+        var users  = Substitute.For<IUserRepository>();
         var hasher = Substitute.For<IPasswordHasher>();
-        var refreshTokens = Substitute.For<IRefreshTokenRepository>();
-        var transactions = new RecordingAuthTransactionManager();
-        var handler = new ChangePasswordHandler(users, hasher, refreshTokens, transactions);
+        var handler = new ChangePasswordHandler(users, hasher);
+
         var userId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            Email = "chef@test.com",
-            DisplayName = "Chef",
-            PasswordHash = "old-hash",
-            Role = "user",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+        var user   = MakeUser(userId, "old-hash");
 
         users.GetByIdAsync(userId, CancellationToken.None).Returns(user);
         hasher.Verify("wrong-password", "old-hash").Returns(false);
@@ -72,25 +64,7 @@ public sealed class ChangePasswordHandlerTests
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        transactions.ExecutionCount.Should().Be(0);
+        result.Error.Should().Be(DomainErrors.Auth.InvalidCredentials);
         await users.DidNotReceive().UpdateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
-        await refreshTokens.DidNotReceive().RevokeAllForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
-    }
-
-    private sealed class RecordingAuthTransactionManager : IAuthTransactionManager
-    {
-        public int ExecutionCount { get; private set; }
-
-        public async Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct)
-        {
-            ExecutionCount++;
-            return await operation(ct);
-        }
-
-        public async Task ExecuteAsync(Func<CancellationToken, Task> operation, CancellationToken ct)
-        {
-            ExecutionCount++;
-            await operation(ct);
-        }
     }
 }

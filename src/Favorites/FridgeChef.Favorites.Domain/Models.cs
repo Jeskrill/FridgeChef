@@ -11,4 +11,6 @@ public interface IFavoriteRecipeRepository
     Task<bool> ExistsAsync(Guid userId, Guid recipeId, CancellationToken ct = default);
     Task AddAsync(FavoriteRecipe favorite, CancellationToken ct = default);
     Task RemoveAsync(Guid userId, Guid recipeId, CancellationToken ct = default);
+    Task<int> CountTotalAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<(Guid RecipeId, int Count)>> GetMostFavoritedAsync(int limit, CancellationToken ct = default);
 }

@@ -1,3 +1,4 @@
+using FridgeChef.Api.Endpoints.Admin;
 using FridgeChef.Api.Endpoints.Auth;
 using FridgeChef.Api.Endpoints.Favorites;
 using FridgeChef.Api.Endpoints.FoodNodes;
@@ -23,5 +24,6 @@ internal static class EndpointExtensions
         app.MapFoodNodeEndpoints();
         app.MapReferenceEndpoints();
         app.MapPricingEndpoints();
+        app.MapAdminEndpoints();
     }
 }

@@ -1,13 +1,14 @@
 namespace FridgeChef.SharedKernel;
 
-/// <summary>
-/// Catalog of well-known domain errors, grouped by bounded context.
-/// </summary>
+// Catalog of well-known domain errors, grouped by bounded context.
 public static class DomainErrors
 {
     public static class Auth
     {
         public static readonly DomainError EmailAlreadyTaken =
+            new("AUTH_EMAIL_TAKEN", "Пользователь с таким email уже зарегистрирован");
+        // Псевдоним для единообразия с bounded context handlers
+        public static readonly DomainError EmailAlreadyExists =
             new("AUTH_EMAIL_TAKEN", "Пользователь с таким email уже зарегистрирован");
         public static readonly DomainError InvalidCredentials =
             new("AUTH_INVALID_CREDENTIALS", "Неверный email или пароль");
@@ -15,6 +16,8 @@ public static class DomainErrors
             new("AUTH_INVALID_REFRESH_TOKEN", "Refresh token невалидный или истёк");
         public static readonly DomainError WrongPassword =
             new("AUTH_WRONG_PASSWORD", "Текущий пароль указан неверно");
+        public static readonly DomainError AccountBlocked =
+            new("AUTH_ACCOUNT_BLOCKED", "Аккаунт заблокирован администратором");
     }
 
     public static class NotFound
