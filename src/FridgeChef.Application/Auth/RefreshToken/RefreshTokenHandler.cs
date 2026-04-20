@@ -1,10 +1,21 @@
 using FridgeChef.Application.Auth.Dto;
 using FridgeChef.Domain.Auth;
 using FridgeChef.Domain.Common;
+using FluentValidation;
 
 namespace FridgeChef.Application.Auth.RefreshToken;
 
 public sealed record RefreshTokenRequest(string RefreshToken);
+
+public sealed class RefreshTokenValidator : AbstractValidator<RefreshTokenRequest>
+{
+    public RefreshTokenValidator()
+    {
+        RuleFor(x => x.RefreshToken)
+            .NotEmpty().WithMessage("Refresh token обязателен")
+            .MinimumLength(32).WithMessage("Refresh token слишком короткий");
+    }
+}
 
 public sealed class RefreshTokenHandler
 {
@@ -18,16 +29,15 @@ public sealed class RefreshTokenHandler
     }
 
     public async Task<Result<AuthTokensResponse>> HandleAsync(
-        RefreshTokenRequest request, CancellationToken ct = default)
+        RefreshTokenRequest request,
+        AuthClientContext clientContext,
+        CancellationToken ct = default)
     {
         var tokenHash = _jwt.HashRefreshToken(request.RefreshToken);
         var existing = await _refreshTokens.GetByTokenHashAsync(tokenHash, ct);
 
         if (existing is null || existing.ExpiresAt < DateTime.UtcNow)
             return DomainErrors.Auth.InvalidRefreshToken;
-
-        // Revoke old token
-        await _refreshTokens.RevokeAsync(existing.Id, ct);
 
         // Generate new pair
         var accessToken = _jwt.GenerateAccessToken(existing.User);
@@ -39,10 +49,14 @@ public sealed class RefreshTokenHandler
             UserId = existing.UserId,
             TokenHash = _jwt.HashRefreshToken(newRefreshValue),
             ExpiresAt = DateTime.UtcNow.AddDays(30),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UserAgent = clientContext.UserAgent,
+            Ip = clientContext.Ip
         };
 
-        await _refreshTokens.AddAsync(newRefreshToken, ct);
+        var rotated = await _refreshTokens.RotateAsync(existing.Id, newRefreshToken, ct);
+        if (!rotated)
+            return DomainErrors.Auth.InvalidRefreshToken;
 
         return new AuthTokensResponse(accessToken, newRefreshValue, newRefreshToken.ExpiresAt);
     }

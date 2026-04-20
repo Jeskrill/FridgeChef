@@ -48,6 +48,7 @@ public static class InfrastructureServiceExtensions
         // Security
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
         services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IAuthTransactionManager, AuthTransactionManager>();
 
         return services;
     }

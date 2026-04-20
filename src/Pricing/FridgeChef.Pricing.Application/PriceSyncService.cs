@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FridgeChef.Pricing.Application;
 
@@ -15,20 +16,20 @@ public sealed class PriceSyncService
     private readonly IRetailerScraper _scraper;
     private readonly IPriceSyncRepository _repository;
     private readonly ILogger<PriceSyncService> _logger;
+    private readonly PriceSyncOptions _options;
 
     /// <summary>Max parallel scrape tasks (for sequential mode only).</summary>
     private const int MaxParallelism = 4;
 
-    /// <summary>Batch size for batch-capable scrapers.</summary>
-    private const int BatchSize = 20;
-
     public PriceSyncService(
         IRetailerScraper scraper,
         IPriceSyncRepository repository,
+        IOptions<PriceSyncOptions> options,
         ILogger<PriceSyncService> logger)
     {
         _scraper = scraper;
         _repository = repository;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -40,6 +41,13 @@ public sealed class PriceSyncService
             _scraper.RetailerCode, "Пятёрочка", "https://5ka.ru", ct);
 
         var ingredients = await _repository.GetActiveIngredientsAsync(ct);
+        if (_options.MaxIngredientsPerRun > 0)
+        {
+            ingredients = ingredients
+                .Take(_options.MaxIngredientsPerRun)
+                .ToList();
+        }
+
         _logger.LogInformation("Found {Count} active ingredients to sync", ingredients.Count);
 
         SyncStats stats;
@@ -68,16 +76,17 @@ public sealed class PriceSyncService
         CancellationToken ct)
     {
         var stats = new SyncStats();
+        var batchSize = Math.Max(1, _options.BatchSize);
 
         var batches = ingredients
             .Select((ing, idx) => (ing, idx))
-            .GroupBy(x => x.idx / BatchSize)
+            .GroupBy(x => x.idx / batchSize)
             .Select(g => g.Select(x => x.ing).ToList())
             .ToList();
 
         _logger.LogInformation(
             "Batch mode: {Batches} batches of up to {Size} queries",
-            batches.Count, BatchSize);
+            batches.Count, batchSize);
 
         var batchNum = 0;
         foreach (var batch in batches)
@@ -177,15 +186,7 @@ public sealed class PriceSyncService
         long retailerId, IngredientToScrape ingredient,
         ScrapedProduct best, CancellationToken ct)
     {
-        var productId = await _repository.UpsertRetailerProductAsync(
-            retailerId, best.ExternalSku, best.Title, best.Brand,
-            best.ProductUrl, ct);
-
-        await _repository.InsertPriceSnapshotAsync(
-            productId, best.RegularPrice, best.DiscountPrice, ct);
-
-        await _repository.UpsertIngredientProductMatchAsync(
-            ingredient.FoodNodeId, productId, ct);
+        await _repository.PersistBestMatchAsync(retailerId, ingredient, best, ct);
     }
 
     /// <summary>Mutable counters for sync progress.</summary>

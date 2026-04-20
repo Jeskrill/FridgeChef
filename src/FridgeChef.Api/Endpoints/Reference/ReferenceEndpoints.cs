@@ -18,6 +18,14 @@ internal static class ReferenceEndpoints
         // Taxons — диеты, кухни и прочие таксоны
         app.MapGet("/taxons", async (string? kind, GetTaxonsHandler handler, CancellationToken ct) =>
         {
+            if (!string.IsNullOrWhiteSpace(kind) && !Enum.TryParse<TaxonKind>(kind, true, out _))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["kind"] = ["Unsupported taxon kind."]
+                });
+            }
+
             TaxonKind? parsedKind = Enum.TryParse<TaxonKind>(kind, true, out var k) ? k : null;
             return Results.Ok(await handler.HandleAsync(parsedKind, ct));
         })

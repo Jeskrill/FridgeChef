@@ -31,7 +31,7 @@ public interface IPantryRepository
     Task<IReadOnlyList<PantryItem>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
     Task<PantryItem?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
-    Task AddAsync(PantryItem item, CancellationToken ct = default);
+    Task<bool> TryAddAsync(PantryItem item, CancellationToken ct);
     Task UpdateAsync(PantryItem item, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct = default);

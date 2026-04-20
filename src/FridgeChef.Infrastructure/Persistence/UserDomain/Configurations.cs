@@ -1,6 +1,10 @@
+using FridgeChef.Domain.Auth;
+using FridgeChef.Domain.Catalog;
 using FridgeChef.Domain.Pantry;
 using FridgeChef.Domain.UserPreferences;
 using FridgeChef.Domain.Favorites;
+using FridgeChef.Domain.Ontology;
+using FridgeChef.Domain.Taxonomy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -27,6 +31,12 @@ internal sealed class PantryItemConfiguration : IEntityTypeConfiguration<PantryI
         builder.Property(p => p.CreatedAt).HasColumnName("created_at");
         builder.Property(p => p.UpdatedAt).HasColumnName("updated_at");
         builder.HasIndex(p => p.UserId);
+        builder.HasIndex(p => new { p.UserId, p.FoodNodeId })
+            .HasDatabaseName("uq_pantry_items_user_food_node")
+            .IsUnique();
+        builder.HasOne<User>().WithMany().HasForeignKey(p => p.UserId);
+        builder.HasOne<FoodNode>().WithMany().HasForeignKey(p => p.FoodNodeId);
+        builder.HasOne<Unit>().WithMany().HasForeignKey(p => p.UnitId);
     }
 }
 
@@ -41,6 +51,8 @@ internal sealed class UserAllergenConfiguration : IEntityTypeConfiguration<UserA
         builder.Property(a => a.Severity).HasColumnName("severity")
             .HasConversion(v => v.ToString().ToLowerInvariant(), v => Enum.Parse<AllergenSeverity>(v, true));
         builder.Property(a => a.CreatedAt).HasColumnName("created_at");
+        builder.HasOne<User>().WithMany().HasForeignKey(a => a.UserId);
+        builder.HasOne<FoodNode>().WithMany().HasForeignKey(a => a.FoodNodeId);
     }
 }
 
@@ -53,6 +65,8 @@ internal sealed class UserExcludedFoodConfiguration : IEntityTypeConfiguration<U
         builder.Property(e => e.UserId).HasColumnName("user_id");
         builder.Property(e => e.FoodNodeId).HasColumnName("food_node_id");
         builder.Property(e => e.CreatedAt).HasColumnName("created_at");
+        builder.HasOne<User>().WithMany().HasForeignKey(e => e.UserId);
+        builder.HasOne<FoodNode>().WithMany().HasForeignKey(e => e.FoodNodeId);
     }
 }
 
@@ -66,6 +80,8 @@ internal sealed class UserFavoriteFoodConfiguration : IEntityTypeConfiguration<U
         builder.Property(f => f.FoodNodeId).HasColumnName("food_node_id");
         builder.Property(f => f.Weight).HasColumnName("weight");
         builder.Property(f => f.CreatedAt).HasColumnName("created_at");
+        builder.HasOne<User>().WithMany().HasForeignKey(f => f.UserId);
+        builder.HasOne<FoodNode>().WithMany().HasForeignKey(f => f.FoodNodeId);
     }
 }
 
@@ -78,6 +94,8 @@ internal sealed class UserDefaultDietConfiguration : IEntityTypeConfiguration<Us
         builder.Property(d => d.UserId).HasColumnName("user_id");
         builder.Property(d => d.TaxonId).HasColumnName("taxon_id");
         builder.Property(d => d.CreatedAt).HasColumnName("created_at");
+        builder.HasOne<User>().WithMany().HasForeignKey(d => d.UserId);
+        builder.HasOne<Taxon>().WithMany().HasForeignKey(d => d.TaxonId);
     }
 }
 
@@ -90,5 +108,7 @@ internal sealed class FavoriteRecipeConfiguration : IEntityTypeConfiguration<Fav
         builder.Property(f => f.UserId).HasColumnName("user_id");
         builder.Property(f => f.RecipeId).HasColumnName("recipe_id");
         builder.Property(f => f.CreatedAt).HasColumnName("created_at");
+        builder.HasOne<User>().WithMany().HasForeignKey(f => f.UserId);
+        builder.HasOne<Recipe>().WithMany().HasForeignKey(f => f.RecipeId);
     }
 }

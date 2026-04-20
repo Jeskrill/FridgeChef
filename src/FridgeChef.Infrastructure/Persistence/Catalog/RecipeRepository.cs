@@ -39,7 +39,7 @@ internal sealed class RecipeRepository : IRecipeRepository
         if (idList.Count == 0) return Array.Empty<Recipe>();
 
         return await _db.Recipes
-            .Where(r => idList.Contains(r.Id))
+            .Where(r => idList.Contains(r.Id) && r.Status == RecipeStatus.Published)
             .AsSplitQuery()
             .Include(r => r.Ingredients)
             .Include(r => r.Media)
@@ -81,6 +81,7 @@ internal sealed class RecipeRepository : IRecipeRepository
 
         var items = await q
             .OrderByDescending(r => r.CreatedAt)
+            .ThenBy(r => r.Id)
             .Skip(paging.Skip)
             .Take(paging.EffectivePageSize)
             .AsSplitQuery()
@@ -102,32 +103,54 @@ internal sealed class RecipeRepository : IRecipeRepository
         // Convert to array so EF Core can translate Contains() to SQL ANY()
         var idsArray = foodNodeIds.ToArray();
 
+        var matchCounts = _db.RecipeIngredients
+            .Where(i => !i.IsOptional && i.FoodNodeId != null && idsArray.Contains(i.FoodNodeId.Value))
+            .GroupBy(i => i.RecipeId)
+            .Select(group => new
+            {
+                RecipeId = group.Key,
+                MatchCount = group.Count()
+            });
+
         var q = _db.Recipes
             .Where(r => r.Status == RecipeStatus.Published)
-            .Where(r => r.Ingredients.Any(i => i.FoodNodeId != null && idsArray.Contains(i.FoodNodeId.Value)));
+            .Join(
+                matchCounts,
+                recipe => recipe.Id,
+                matched => matched.RecipeId,
+                (recipe, matched) => new
+                {
+                    Recipe = recipe,
+                    matched.MatchCount
+                });
 
         // Exclude recipes with user's allergens
         if (excludeAllergenNodeIds is { Length: > 0 })
         {
-            q = q.Where(r => !r.Allergens.Any(a => excludeAllergenNodeIds.Contains(a.AllergenNodeId)));
+            q = q.Where(item =>
+                !item.Recipe.Allergens.Any(a => excludeAllergenNodeIds.Contains(a.AllergenNodeId)));
         }
 
         // Filter by diet
         if (dietFilterTaxonIds is { Length: > 0 })
         {
-            q = q.Where(r => r.RecipeTaxons.Any(rt => dietFilterTaxonIds.Contains(rt.TaxonId)));
+            q = q.Where(item =>
+                item.Recipe.RecipeTaxons.Any(rt => dietFilterTaxonIds.Contains(rt.TaxonId)));
         }
 
-        // Step 1: get matching recipe IDs (fast, no JOINs)
+        // Step 1: get best candidate IDs ordered by match density.
         var matchingIds = await q
+            .OrderByDescending(item => item.MatchCount)
+            .ThenByDescending(item => item.Recipe.CreatedAt)
+            .ThenBy(item => item.Recipe.Id)
             .Take(limit)
-            .Select(r => r.Id)
+            .Select(item => item.Recipe.Id)
             .ToListAsync(ct);
 
         if (matchingIds.Count == 0) return Array.Empty<Recipe>();
 
         // Step 2: load full graph for those IDs (split query works correctly with IN clause, no LIMIT subquery issue)
-        return await _db.Recipes
+        var recipes = await _db.Recipes
             .Where(r => matchingIds.Contains(r.Id))
             .AsSplitQuery()
             .Include(r => r.Ingredients)
@@ -135,6 +158,14 @@ internal sealed class RecipeRepository : IRecipeRepository
             .Include(r => r.Nutrition)
             .Include(r => r.Allergens)
             .ToListAsync(ct);
+
+        var orderById = matchingIds
+            .Select((id, index) => new { id, index })
+            .ToDictionary(x => x.id, x => x.index);
+
+        return recipes
+            .OrderBy(recipe => orderById[recipe.Id])
+            .ToList();
     }
 
     public async Task UpdateStatusAsync(Guid id, RecipeStatus status, CancellationToken ct = default)

@@ -34,6 +34,8 @@ public static class DomainErrors
     public static class Pantry
     {
         public static readonly DomainError AlreadyExists = new("PANTRY_ALREADY_EXISTS", "Этот продукт уже добавлен в холодильник");
+        public static readonly DomainError UnitRequiresQuantity =
+            new("PANTRY_UNIT_REQUIRES_QUANTITY", "Нельзя указать единицу измерения без количества");
     }
 
     public static class Favorites

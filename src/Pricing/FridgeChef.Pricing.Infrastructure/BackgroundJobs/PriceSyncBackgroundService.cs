@@ -13,18 +13,18 @@ namespace FridgeChef.Pricing.Infrastructure.BackgroundJobs;
 /// </summary>
 public sealed class PriceSyncBackgroundService : BackgroundService
 {
-    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly PriceSyncRunner _priceSyncRunner;
     private readonly ILogger<PriceSyncBackgroundService> _logger;
     private readonly IConfiguration _config;
 
     private static readonly TimeSpan SyncInterval = TimeSpan.FromHours(24);
 
     public PriceSyncBackgroundService(
-        IServiceScopeFactory scopeFactory,
+        PriceSyncRunner priceSyncRunner,
         ILogger<PriceSyncBackgroundService> logger,
         IConfiguration config)
     {
-        _scopeFactory = scopeFactory;
+        _priceSyncRunner = priceSyncRunner;
         _logger = logger;
         _config = config;
     }
@@ -48,12 +48,16 @@ public sealed class PriceSyncBackgroundService : BackgroundService
         {
             try
             {
-                await using var scope = _scopeFactory.CreateAsyncScope();
-                var syncService = scope.ServiceProvider.GetRequiredService<PriceSyncService>();
-
                 _logger.LogInformation("Starting scheduled price sync...");
-                await syncService.SyncAllAsync(stoppingToken);
-                _logger.LogInformation("Scheduled price sync completed. Next sync in {Interval}", SyncInterval);
+                var started = await _priceSyncRunner.TryRunAsync(stoppingToken);
+                if (!started)
+                {
+                    _logger.LogWarning("Scheduled price sync skipped because another sync is already running.");
+                }
+                else
+                {
+                    _logger.LogInformation("Scheduled price sync completed. Next sync in {Interval}", SyncInterval);
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

@@ -10,6 +10,7 @@
  *   POST /cookies         → { cookies: "name=val; ..." } sets cookies
  */
 const http = require('http');
+const path = require('path');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
@@ -17,6 +18,8 @@ puppeteer.use(StealthPlugin());
 const PORT = process.env.PORT || 3333;
 const SEARCH_URL = 'https://5ka.ru/search/?text=';
 const DELAY_MS = 2000;
+const HEADLESS = (process.env.PUPPETEER_HEADLESS || 'true').toLowerCase() !== 'false';
+const CHROME_EXECUTABLE_PATH = process.env.CHROME_EXECUTABLE_PATH || null;
 
 let browser = null;
 let page = null;
@@ -32,12 +35,13 @@ async function launchBrowser() {
             try { await browser.close(); } catch(e) {}
         }
 
-        const userDataDir = require('path').join(__dirname, '.chrome-profile');
+        const userDataDir = path.join(__dirname, '.chrome-profile');
         console.log(`[sidecar] User data dir: ${userDataDir}`);
+        console.log(`[sidecar] Launching browser. Headless=${HEADLESS}, ExecutablePath=${CHROME_EXECUTABLE_PATH || 'auto'}`);
 
         browser = await puppeteer.launch({
-            headless: false,
-            executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            headless: HEADLESS,
+            executablePath: CHROME_EXECUTABLE_PATH || undefined,
             userDataDir,
             args: [
                 '--disable-blink-features=AutomationControlled',
@@ -81,8 +85,12 @@ async function launchBrowser() {
         const cookies = await page.cookies();
         console.log(`[sidecar] Warmup done. Cookies: ${cookies.length}, Ready: ${ready}`);
 
-        status = 'ready';
-        lastError = ready ? null : 'Captcha not solved — solve it in the browser window, then POST /restart';
+        status = ready ? 'ready' : 'error';
+        lastError = ready
+            ? null
+            : HEADLESS
+                ? 'Initial warmup failed in headless mode. Retry with PUPPETEER_HEADLESS=false or refresh cookies.'
+                : 'Captcha not solved — solve it in the browser window, then POST /restart';
     } catch (e) {
         status = 'error';
         lastError = e.message;
@@ -214,10 +222,10 @@ const server = http.createServer(async (req, res) => {
             if (!Array.isArray(queries)) return sendJson(400, { error: 'queries must be an array' });
 
             const results = [];
-            for (const q of queries) {
+            for (const [index, q] of queries.entries()) {
                 const r = await scrapeQuery(q);
                 results.push(r);
-                if (queries.indexOf(q) < queries.length - 1) {
+                if (index < queries.length - 1) {
                     await new Promise(r => setTimeout(r, DELAY_MS));
                 }
             }

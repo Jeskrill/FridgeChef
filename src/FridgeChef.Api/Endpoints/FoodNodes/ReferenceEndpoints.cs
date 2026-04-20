@@ -13,15 +13,24 @@ internal static class FoodNodeEndpoints
 
         group.MapGet("/", async (string? q, SearchFoodNodesHandler handler, CancellationToken ct) =>
         {
-            if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
+            var normalizedQuery = q?.Trim();
+            if (string.IsNullOrWhiteSpace(normalizedQuery) || normalizedQuery.Length < 2)
                 return Results.Ok(Array.Empty<FoodNodeSearchResponse>());
-            return Results.Ok(await handler.HandleAsync(q, ct));
+            return Results.Ok(await handler.HandleAsync(normalizedQuery, ct));
         })
         .Produces<IReadOnlyList<FoodNodeSearchResponse>>()
         .WithSummary("Поиск продуктов по названию (триграммный)");
 
         group.MapGet("/{id:long}", async (long id, GetFoodNodeHandler handler, CancellationToken ct) =>
         {
+            if (id <= 0)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["id"] = ["Food node ID must be positive."]
+                });
+            }
+
             var result = await handler.HandleAsync(id, ct);
             return result.ToHttpResult();
         })

@@ -1,5 +1,6 @@
 using FridgeChef.Domain.Common;
 using FridgeChef.Domain.UserPreferences;
+using FluentValidation;
 
 namespace FridgeChef.Application.Settings;
 
@@ -14,6 +15,49 @@ public sealed record AddAllergenRequest(long FoodNodeId, string Severity = "stri
 public sealed record AddFavoriteFoodRequest(long FoodNodeId);
 public sealed record AddExcludedFoodRequest(long FoodNodeId);
 public sealed record UpdateDietsRequest(long[] TaxonIds);
+
+public sealed class AddAllergenValidator : AbstractValidator<AddAllergenRequest>
+{
+    public AddAllergenValidator()
+    {
+        RuleFor(x => x.FoodNodeId)
+            .GreaterThan(0).WithMessage("Food node ID должен быть положительным");
+
+        RuleFor(x => x.Severity)
+            .Must(severity => Enum.TryParse<AllergenSeverity>(severity, true, out _))
+            .WithMessage("Severity должен быть одним из поддерживаемых значений");
+    }
+}
+
+public sealed class AddFavoriteFoodValidator : AbstractValidator<AddFavoriteFoodRequest>
+{
+    public AddFavoriteFoodValidator()
+    {
+        RuleFor(x => x.FoodNodeId)
+            .GreaterThan(0).WithMessage("Food node ID должен быть положительным");
+    }
+}
+
+public sealed class AddExcludedFoodValidator : AbstractValidator<AddExcludedFoodRequest>
+{
+    public AddExcludedFoodValidator()
+    {
+        RuleFor(x => x.FoodNodeId)
+            .GreaterThan(0).WithMessage("Food node ID должен быть положительным");
+    }
+}
+
+public sealed class UpdateDietsValidator : AbstractValidator<UpdateDietsRequest>
+{
+    public UpdateDietsValidator()
+    {
+        RuleFor(x => x.TaxonIds)
+            .NotNull().WithMessage("Taxon IDs обязательны")
+            .Must(ids => ids.All(id => id > 0)).WithMessage("Taxon IDs должны быть положительными")
+            .Must(ids => ids.Distinct().Count() == ids.Length).WithMessage("Taxon IDs не должны содержать дубликаты")
+            .Must(ids => ids.Length <= 50).WithMessage("Нельзя передавать больше 50 diet IDs");
+    }
+}
 
 // ── Allergens ──
 public sealed class GetAllergensHandler(IUserPreferencesRepository prefs)
@@ -33,7 +77,7 @@ public sealed class AddAllergenHandler(IUserPreferencesRepository prefs)
         {
             UserId = userId,
             FoodNodeId = request.FoodNodeId,
-            Severity = Enum.TryParse<AllergenSeverity>(request.Severity, true, out var s) ? s : AllergenSeverity.Strict,
+            Severity = Enum.Parse<AllergenSeverity>(request.Severity, true),
             CreatedAt = DateTime.UtcNow
         };
         await prefs.AddAllergenAsync(allergen, ct);
@@ -126,7 +170,7 @@ public sealed class UpdateDietsHandler(IUserPreferencesRepository prefs)
 {
     public async Task<Result> HandleAsync(Guid userId, UpdateDietsRequest request, CancellationToken ct = default)
     {
-        await prefs.ReplaceDefaultDietsAsync(userId, request.TaxonIds, ct);
+        await prefs.ReplaceDefaultDietsAsync(userId, request.TaxonIds.Distinct().ToArray(), ct);
         return Result.Success();
     }
 }

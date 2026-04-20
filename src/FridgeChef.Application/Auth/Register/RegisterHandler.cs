@@ -10,52 +10,65 @@ public sealed class RegisterHandler
     private readonly IPasswordHasher _hasher;
     private readonly IJwtTokenService _jwt;
     private readonly IRefreshTokenRepository _refreshTokens;
+    private readonly IAuthTransactionManager _transactions;
 
     public RegisterHandler(
         IUserRepository users,
         IPasswordHasher hasher,
         IJwtTokenService jwt,
-        IRefreshTokenRepository refreshTokens)
+        IRefreshTokenRepository refreshTokens,
+        IAuthTransactionManager transactions)
     {
         _users = users;
         _hasher = hasher;
         _jwt = jwt;
         _refreshTokens = refreshTokens;
+        _transactions = transactions;
     }
 
     public async Task<Result<AuthTokensResponse>> HandleAsync(
-        RegisterRequest request, CancellationToken ct = default)
+        RegisterRequest request,
+        AuthClientContext clientContext,
+        CancellationToken ct = default)
     {
         if (await _users.EmailExistsAsync(request.Email, ct))
             return DomainErrors.Auth.EmailAlreadyTaken;
 
-        var user = new User
+        return await _transactions.ExecuteAsync(async innerCt =>
         {
-            Id = Guid.NewGuid(),
-            Email = request.Email.Trim().ToLowerInvariant(),
-            DisplayName = request.Name.Trim(),
-            PasswordHash = _hasher.Hash(request.Password),
-            Role = "user",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
+            var now = DateTime.UtcNow;
 
-        await _users.AddAsync(user, ct);
+            var user = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = request.Email.Trim().ToLowerInvariant(),
+                DisplayName = request.Name.Trim(),
+                PasswordHash = _hasher.Hash(request.Password),
+                Role = "user",
+                LastLoginAt = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
 
-        var accessToken = _jwt.GenerateAccessToken(user);
-        var refreshTokenValue = _jwt.GenerateRefreshToken();
+            await _users.AddAsync(user, innerCt);
 
-        var refreshToken = new Domain.Auth.RefreshToken
-        {
-            Id = Guid.NewGuid(),
-            UserId = user.Id,
-            TokenHash = _jwt.HashRefreshToken(refreshTokenValue),
-            ExpiresAt = DateTime.UtcNow.AddDays(30),
-            CreatedAt = DateTime.UtcNow
-        };
+            var accessToken = _jwt.GenerateAccessToken(user);
+            var refreshTokenValue = _jwt.GenerateRefreshToken();
 
-        await _refreshTokens.AddAsync(refreshToken, ct);
+            var refreshToken = new Domain.Auth.RefreshToken
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                TokenHash = _jwt.HashRefreshToken(refreshTokenValue),
+                ExpiresAt = now.AddDays(30),
+                CreatedAt = now,
+                UserAgent = clientContext.UserAgent,
+                Ip = clientContext.Ip
+            };
 
-        return new AuthTokensResponse(accessToken, refreshTokenValue, refreshToken.ExpiresAt);
+            await _refreshTokens.AddAsync(refreshToken, innerCt);
+
+            return new AuthTokensResponse(accessToken, refreshTokenValue, refreshToken.ExpiresAt);
+        }, ct);
     }
 }

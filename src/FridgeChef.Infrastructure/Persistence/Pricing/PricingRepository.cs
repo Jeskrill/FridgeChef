@@ -35,7 +35,9 @@ internal sealed class PricingRepository : IPricingRepository
                     LIMIT 1
                 ) ps ON true
                 WHERE ipm.food_node_id = ANY({0})
-                ORDER BY ipm.food_node_id, ipm.score DESC
+                  AND rp.is_active = true
+                  AND r.is_active = true
+                ORDER BY ipm.food_node_id, ipm.is_primary DESC, ipm.score DESC
                 """,
                 ids.ToArray())
             .ToListAsync(ct);

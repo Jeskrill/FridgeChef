@@ -15,7 +15,15 @@ public sealed class GetPricesHandler(IPricingRepository pricing)
     public async Task<IReadOnlyList<IngredientPriceResponse>> HandleAsync(
         long[] foodNodeIds, CancellationToken ct = default)
     {
-        var prices = await pricing.GetPricesForFoodNodesAsync(foodNodeIds, ct);
+        var distinctIds = foodNodeIds
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
+
+        if (distinctIds.Length == 0)
+            return Array.Empty<IngredientPriceResponse>();
+
+        var prices = await pricing.GetPricesForFoodNodesAsync(distinctIds, ct);
         return prices.Select(p => new IngredientPriceResponse(
             p.FoodNodeId, p.ProductTitle, p.Price, p.PromoPrice,
             p.ProductUrl, p.RetailerName)).ToList();

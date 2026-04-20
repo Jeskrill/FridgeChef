@@ -1,6 +1,8 @@
 using FridgeChef.Domain.Common;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 
 namespace FridgeChef.Api.Middleware;
 
@@ -16,6 +18,14 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
+        if (TryMapDatabaseException(exception, out var dbProblemDetails))
+        {
+            _logger.LogWarning(exception, "Database exception: {Message}", exception.Message);
+            httpContext.Response.StatusCode = dbProblemDetails.Status ?? StatusCodes.Status500InternalServerError;
+            await httpContext.Response.WriteAsJsonAsync(dbProblemDetails, cancellationToken);
+            return true;
+        }
+
         _logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
 
         var problemDetails = new ProblemDetails
@@ -30,6 +40,38 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
         return true;
+    }
+
+    private static bool TryMapDatabaseException(Exception exception, out ProblemDetails problemDetails)
+    {
+        var postgresException = exception as PostgresException
+            ?? (exception as DbUpdateException)?.InnerException as PostgresException;
+
+        if (postgresException is null)
+        {
+            problemDetails = null!;
+            return false;
+        }
+
+        problemDetails = postgresException.SqlState switch
+        {
+            PostgresErrorCodes.UniqueViolation => new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Конфликт данных",
+                Detail = "Запись с такими данными уже существует."
+            },
+            PostgresErrorCodes.ForeignKeyViolation or PostgresErrorCodes.CheckViolation =>
+                new ProblemDetails
+                {
+                    Status = StatusCodes.Status400BadRequest,
+                    Title = "Некорректные данные",
+                    Detail = "Переданы значения, нарушающие ограничения базы данных."
+                },
+            _ => null!
+        };
+
+        return problemDetails is not null;
     }
 
     private static string GetInnermostMessage(Exception ex)
@@ -62,7 +104,12 @@ internal static class ResultExtensions
                 title: "Не найдено",
                 detail: error.Message),
 
-            var c when c.StartsWith("AUTH_INVALID") || c.StartsWith("AUTH_WRONG") || c.StartsWith("AUTH_BLOCKED") =>
+            "AUTH_BLOCKED" => Results.Problem(
+                statusCode: StatusCodes.Status403Forbidden,
+                title: "Доступ запрещён",
+                detail: error.Message),
+
+            var c when c.StartsWith("AUTH_INVALID") || c.StartsWith("AUTH_WRONG") =>
                 Results.Problem(
                     statusCode: StatusCodes.Status401Unauthorized,
                     title: "Ошибка авторизации",

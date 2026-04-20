@@ -17,8 +17,7 @@ internal sealed class JwtTokenService : IJwtTokenService
 
     public JwtTokenService(IConfiguration configuration)
     {
-        _secret = configuration["Jwt:Secret"]
-            ?? throw new InvalidOperationException("Jwt:Secret is not configured");
+        _secret = configuration.GetRequiredJwtSecret();
         _issuer = configuration["Jwt:Issuer"] ?? "FridgeChef";
         _audience = configuration["Jwt:Audience"] ?? "FridgeChefApp";
         _expiryHours = int.TryParse(configuration["Jwt:ExpiryHours"], out var h) ? h : 24;

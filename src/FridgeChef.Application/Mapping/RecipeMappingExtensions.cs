@@ -10,7 +10,11 @@ public static class RecipeMappingExtensions
             Id: recipe.Id,
             Slug: recipe.Slug,
             Title: recipe.Title,
-            ImageUrl: recipe.Media.FirstOrDefault(m => m.MediaKind == MediaKind.Hero)?.Url,
+            ImageUrl: recipe.Media
+                .Where(m => m.MediaKind == MediaKind.Hero)
+                .OrderBy(m => m.SortOrder)
+                .Select(m => m.Url)
+                .FirstOrDefault(),
             TotalTimeMin: recipe.TotalTimeMin,
             ActiveTimeMin: recipe.ActiveTimeMin,
             ServingsCount: recipe.ServingsCount,
@@ -42,8 +46,14 @@ public static class RecipeMappingExtensions
                 .OrderBy(m => m.SortOrder)
                 .Select(m => m.ToResponse())
                 .ToList(),
-            Equipment: recipe.Equipment.Select(e => e.EquipmentName).ToList(),
-            AllergenNodeIds: recipe.Allergens.Select(a => a.AllergenNodeId).ToList());
+            Equipment: recipe.Equipment
+                .OrderBy(e => e.Position)
+                .Select(e => e.EquipmentName)
+                .ToList(),
+            AllergenNodeIds: recipe.Allergens
+                .Select(a => a.AllergenNodeId)
+                .OrderBy(id => id)
+                .ToList());
 
     private static RecipeIngredientResponse ToResponse(this RecipeIngredient ingredient) =>
         new(

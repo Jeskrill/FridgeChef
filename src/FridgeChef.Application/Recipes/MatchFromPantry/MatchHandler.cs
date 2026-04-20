@@ -4,12 +4,30 @@ using FridgeChef.Domain.Catalog;
 using FridgeChef.Domain.Ontology;
 using FridgeChef.Domain.Pantry;
 using FridgeChef.Domain.UserPreferences;
+using FluentValidation;
 
 namespace FridgeChef.Application.Recipes.MatchFromPantry;
 
 public sealed record MatchRequest(
     long[]? DietFilterIds = null,
     int MaxResults = 50);
+
+public sealed class MatchRequestValidator : AbstractValidator<MatchRequest>
+{
+    public MatchRequestValidator()
+    {
+        RuleFor(x => x.MaxResults)
+            .InclusiveBetween(1, 100)
+            .WithMessage("MaxResults должен быть в диапазоне от 1 до 100");
+
+        When(x => x.DietFilterIds is not null, () =>
+        {
+            RuleFor(x => x.DietFilterIds!)
+                .Must(ids => ids.All(id => id > 0)).WithMessage("Diet IDs должны быть положительными")
+                .Must(ids => ids.Distinct().Count() == ids.Length).WithMessage("Diet IDs не должны содержать дубликаты");
+        });
+    }
+}
 
 public sealed record MatchResultResponse(
     RecipeCardResponse Recipe,
@@ -51,7 +69,7 @@ public sealed class MatchHandler
             : new HashSet<long>();
 
         // Only apply diet filter if explicitly requested — default diets are preferences, not hard filters
-        var dietTaxonIds = request.DietFilterIds;
+        var dietTaxonIds = request.DietFilterIds?.Distinct().ToArray();
 
         var candidates = await _recipes.GetByFoodNodeIdsAsync(
             expandedNodeIds,

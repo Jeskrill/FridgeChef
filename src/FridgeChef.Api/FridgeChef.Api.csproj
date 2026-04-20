@@ -9,15 +9,8 @@
     <ProjectReference Include="..\FridgeChef.Application\FridgeChef.Application.csproj" />
     <ProjectReference Include="..\FridgeChef.Infrastructure\FridgeChef.Infrastructure.csproj" />
 
-    <!-- New bounded context projects -->
-    <ProjectReference Include="..\Catalog\FridgeChef.Catalog.Application\FridgeChef.Catalog.Application.csproj" />
-    <ProjectReference Include="..\Catalog\FridgeChef.Catalog.Infrastructure\FridgeChef.Catalog.Infrastructure.csproj" />
-    <ProjectReference Include="..\Ontology\FridgeChef.Ontology.Infrastructure\FridgeChef.Ontology.Infrastructure.csproj" />
-    <ProjectReference Include="..\Auth\FridgeChef.Auth.Infrastructure\FridgeChef.Auth.Infrastructure.csproj" />
-    <ProjectReference Include="..\Pantry\FridgeChef.Pantry.Infrastructure\FridgeChef.Pantry.Infrastructure.csproj" />
-    <ProjectReference Include="..\Favorites\FridgeChef.Favorites.Infrastructure\FridgeChef.Favorites.Infrastructure.csproj" />
+    <!-- Actively used bounded context project -->
     <ProjectReference Include="..\Pricing\FridgeChef.Pricing.Infrastructure\FridgeChef.Pricing.Infrastructure.csproj" />
-    <ProjectReference Include="..\UserPreferences\FridgeChef.UserPreferences.Infrastructure\FridgeChef.UserPreferences.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -58,6 +58,12 @@ public interface IPriceSyncRepository
     Task UpsertIngredientProductMatchAsync(
         long foodNodeId, long retailerProductId, CancellationToken ct = default);
 
+    Task PersistBestMatchAsync(
+        long retailerId,
+        IngredientToScrape ingredient,
+        ScrapedProduct best,
+        CancellationToken ct);
+
     Task<IReadOnlyList<IngredientToScrape>> GetActiveIngredientsAsync(CancellationToken ct = default);
 }
 

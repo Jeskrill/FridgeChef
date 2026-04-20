@@ -1,12 +1,15 @@
 using FridgeChef.Application.Pricing;
 using FridgeChef.Pricing.Application;
 using FridgeChef.Pricing.Infrastructure.Scraping;
+using FridgeChef.Pricing.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Pricing;
 
 internal static class PricingEndpoints
 {
+    private const int MaxIngredientIds = 100;
+
     public static void MapPricingEndpoints(this IEndpointRouteBuilder app)
     {
         // GET /pricing/ingredients?ids=1,2,3
@@ -15,17 +18,41 @@ internal static class PricingEndpoints
             GetPricesHandler handler,
             CancellationToken ct) =>
         {
-            if (ids.Length == 0) return Results.Ok(Array.Empty<IngredientPriceResponse>());
-            return Results.Ok(await handler.HandleAsync(ids, ct));
+            if (ids.Any(id => id <= 0))
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["ids"] = ["Ingredient IDs must be positive."]
+                });
+            }
+
+            var distinctIds = ids.Distinct().ToArray();
+            if (distinctIds.Length == 0)
+                return Results.Ok(Array.Empty<IngredientPriceResponse>());
+
+            if (distinctIds.Length > MaxIngredientIds)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["ids"] = [$"No more than {MaxIngredientIds} ingredient IDs are allowed per request."]
+                });
+            }
+
+            return Results.Ok(await handler.HandleAsync(distinctIds, ct));
         })
         .WithTags("Pricing")
         .Produces<IReadOnlyList<IngredientPriceResponse>>()
         .WithSummary("Цены на ингредиенты по food node IDs");
 
         // ─── Admin endpoints ───────────────────────────────────────────
+        var adminGroup = app.MapGroup("/admin/pricing")
+            .WithTags("Admin - Pricing")
+            .RequireAuthorization("AdminOnly")
+            .RequireRateLimiting("AdminPerIdentity");
 
         // GET /admin/pricing/status
-        app.MapGet("/admin/pricing/status", async (
+        adminGroup.MapGet("/status", async (
+            PriceSyncRunner priceSyncRunner,
             PuppeteerPyaterochkaScraper scraper,
             CancellationToken ct) =>
         {
@@ -35,55 +62,65 @@ internal static class PricingEndpoints
                 scraperType = "puppeteer_sidecar",
                 sidecarReady = ready,
                 sidecarError = error,
+                syncRunning = priceSyncRunner.IsRunning,
                 retailer = scraper.RetailerCode,
                 instructions = !ready
                     ? "Start sidecar: cd tools/scraper && node server.js"
                     : "Ready. POST to /admin/pricing/sync to start.",
             });
         })
-        .WithTags("Admin - Pricing")
         .WithSummary("Статус scraper sidecar");
 
         // POST /admin/pricing/sync
-        app.MapPost("/admin/pricing/sync", async (
-            PriceSyncService syncService,
+        adminGroup.MapPost("/sync", async (
+            PriceSyncRunner priceSyncRunner,
             CancellationToken ct) =>
         {
-            await syncService.SyncAllAsync(ct);
+            var started = await priceSyncRunner.TryRunAsync(ct);
+            if (!started)
+            {
+                return Results.Problem(
+                    statusCode: StatusCodes.Status409Conflict,
+                    title: "Синхронизация уже выполняется",
+                    detail: "Дождитесь завершения текущего запуска и повторите запрос позже.");
+            }
+
             return Results.Ok(new { message = "Sync completed" });
         })
-        .WithTags("Admin - Pricing")
         .WithSummary("Запустить синхронизацию цен вручную");
 
         // POST /admin/pricing/reconnect
-        app.MapPost("/admin/pricing/reconnect", async (
+        adminGroup.MapPost("/reconnect", async (
             PuppeteerPyaterochkaScraper scraper,
             CancellationToken ct) =>
         {
             await scraper.RestartBrowserAsync(ct);
             return Results.Ok(new { message = "Browser restart requested" });
         })
-        .WithTags("Admin - Pricing")
         .WithSummary("Переподключиться к Chrome");
 
         // POST /admin/pricing/search-test
-        app.MapPost("/admin/pricing/search-test", async (
+        adminGroup.MapPost("/search-test", async (
             [FromBody] SearchTestRequest request,
             PuppeteerPyaterochkaScraper scraper,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(request.Query))
-                return Results.BadRequest("Query is required");
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["query"] = ["Query is required."]
+                });
+            }
 
-            var products = await scraper.SearchAsync(request.Query, ct);
+            var products = await scraper.SearchAsync(request.Query.Trim(), ct);
             return Results.Ok(new
             {
-                query = request.Query,
+                query = request.Query.Trim(),
                 count = products.Count,
                 products = products.Take(5),
             });
         })
-        .WithTags("Admin - Pricing")
         .WithSummary("Тестовый поиск товаров в Пятёрочке");
     }
 }

@@ -1,5 +1,6 @@
 using FridgeChef.Application.Pantry;
 using FridgeChef.Api.Middleware;
+using FluentValidation;
 
 namespace FridgeChef.Api.Endpoints.Pantry;
 
@@ -18,9 +19,14 @@ internal static class PantryEndpoints
         group.MapPost("/", async (
             HttpContext http,
             AddPantryItemRequest request,
+            IValidator<AddPantryItemRequest> validator,
             AddPantryItemHandler handler,
             CancellationToken ct) =>
         {
+            var validation = await validator.ValidateAsync(request, ct);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
             var result = await handler.HandleAsync(http.User.GetUserId(), request, ct);
             return result.ToHttpResult(StatusCodes.Status201Created);
         });
@@ -28,9 +34,14 @@ internal static class PantryEndpoints
         group.MapPatch("/{id:guid}", async (
             Guid id, HttpContext http,
             UpdatePantryItemRequest request,
+            IValidator<UpdatePantryItemRequest> validator,
             UpdatePantryItemHandler handler,
             CancellationToken ct) =>
         {
+            var validation = await validator.ValidateAsync(request, ct);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
             var result = await handler.HandleAsync(http.User.GetUserId(), id, request, ct);
             return result.ToHttpResult();
         });

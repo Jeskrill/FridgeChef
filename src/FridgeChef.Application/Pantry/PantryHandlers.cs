@@ -1,11 +1,59 @@
 using FridgeChef.Domain.Common;
 using FridgeChef.Domain.Pantry;
+using FluentValidation;
 
 namespace FridgeChef.Application.Pantry;
 
 public sealed record PantryItemResponse(Guid Id, long FoodNodeId, decimal? Quantity, long? UnitId, string QuantityMode, DateTime CreatedAt);
 public sealed record AddPantryItemRequest(long FoodNodeId, decimal? Quantity, long? UnitId);
 public sealed record UpdatePantryItemRequest(decimal? Quantity, long? UnitId);
+
+public sealed class AddPantryItemValidator : AbstractValidator<AddPantryItemRequest>
+{
+    public AddPantryItemValidator()
+    {
+        RuleFor(x => x.FoodNodeId)
+            .GreaterThan(0).WithMessage("Food node ID должен быть положительным");
+
+        When(x => x.Quantity.HasValue, () =>
+        {
+            RuleFor(x => x.Quantity!.Value)
+                .GreaterThan(0).WithMessage("Количество должно быть больше 0");
+        });
+
+        When(x => x.UnitId.HasValue, () =>
+        {
+            RuleFor(x => x.UnitId!.Value)
+                .GreaterThan(0).WithMessage("Unit ID должен быть положительным");
+        });
+
+        RuleFor(x => x)
+            .Must(x => !x.UnitId.HasValue || x.Quantity.HasValue)
+            .WithMessage("Unit ID можно передать только вместе с количеством");
+    }
+}
+
+public sealed class UpdatePantryItemValidator : AbstractValidator<UpdatePantryItemRequest>
+{
+    public UpdatePantryItemValidator()
+    {
+        RuleFor(x => x)
+            .Must(x => x.Quantity.HasValue || x.UnitId.HasValue)
+            .WithMessage("Нужно передать хотя бы одно поле для обновления");
+
+        When(x => x.Quantity.HasValue, () =>
+        {
+            RuleFor(x => x.Quantity!.Value)
+                .GreaterThan(0).WithMessage("Количество должно быть больше 0");
+        });
+
+        When(x => x.UnitId.HasValue, () =>
+        {
+            RuleFor(x => x.UnitId!.Value)
+                .GreaterThan(0).WithMessage("Unit ID должен быть положительным");
+        });
+    }
+}
 
 public sealed class GetPantryItemsHandler
 {
@@ -28,9 +76,6 @@ public sealed class AddPantryItemHandler
     public async Task<Result<PantryItemResponse>> HandleAsync(
         Guid userId, AddPantryItemRequest request, CancellationToken ct = default)
     {
-        if (await _pantry.ExistsAsync(userId, request.FoodNodeId, ct))
-            return DomainErrors.Pantry.AlreadyExists;
-
         var item = new PantryItem
         {
             Id = Guid.NewGuid(),
@@ -44,7 +89,9 @@ public sealed class AddPantryItemHandler
             UpdatedAt = DateTime.UtcNow
         };
 
-        await _pantry.AddAsync(item, ct);
+        var inserted = await _pantry.TryAddAsync(item, ct);
+        if (!inserted)
+            return DomainErrors.Pantry.AlreadyExists;
 
         return new PantryItemResponse(
             item.Id, item.FoodNodeId, item.QuantityValue, item.UnitId, item.QuantityMode.ToString(), item.CreatedAt);
@@ -66,6 +113,8 @@ public sealed class UpdatePantryItemHandler
         if (request.Quantity.HasValue) item.QuantityValue = request.Quantity;
         if (request.UnitId.HasValue) item.UnitId = request.UnitId;
         item.QuantityMode = item.QuantityValue.HasValue ? QuantityMode.Exact : QuantityMode.Unknown;
+        if (item.UnitId.HasValue && !item.QuantityValue.HasValue)
+            return DomainErrors.Pantry.UnitRequiresQuantity;
         item.UpdatedAt = DateTime.UtcNow;
 
         await _pantry.UpdateAsync(item, ct);

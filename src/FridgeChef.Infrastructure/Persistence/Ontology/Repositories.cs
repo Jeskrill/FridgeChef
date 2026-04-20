@@ -16,28 +16,32 @@ internal sealed class FoodNodeRepository : IFoodNodeRepository
         var results = await _db.Database
             .SqlQueryRaw<FoodNodeSearchResult>(
                 """
-                SELECT DISTINCT ON (fn.id)
-                    fn.id AS "Id",
-                    fn.canonical_name AS "CanonicalName",
-                    fa.alias_text AS "AliasText",
-                    similarity(fa.alias_normalized, {0})::float8 AS "Similarity"
-                FROM ontology.food_aliases fa
-                JOIN ontology.food_nodes fn ON fn.id = fa.food_node_id
-                WHERE fa.alias_normalized % {0}
-                  AND fn.status = 'active'
-                ORDER BY fn.id, similarity(fa.alias_normalized, {0}) DESC
+                SELECT ranked."Id", ranked."CanonicalName", ranked."AliasText", ranked."Similarity"
+                FROM (
+                    SELECT DISTINCT ON (fn.id)
+                        fn.id AS "Id",
+                        fn.canonical_name AS "CanonicalName",
+                        fa.alias_text AS "AliasText",
+                        similarity(fa.alias_normalized, {0})::float8 AS "Similarity"
+                    FROM ontology.food_aliases fa
+                    JOIN ontology.food_nodes fn ON fn.id = fa.food_node_id
+                    WHERE fa.alias_normalized % {0}
+                      AND fn.status = 'active'
+                    ORDER BY fn.id, similarity(fa.alias_normalized, {0}) DESC, fa.priority ASC, fa.id ASC
+                ) ranked
+                ORDER BY ranked."Similarity" DESC, ranked."Id"
                 LIMIT {1}
                 """,
                 normalized, limit)
             .ToListAsync(ct);
 
-        return results.OrderByDescending(r => r.Similarity).ToList();
+        return results;
     }
 
     public async Task<FoodNode?> GetByIdAsync(long id, CancellationToken ct = default) =>
         await _db.FoodNodes
             .Include(n => n.Aliases)
-            .FirstOrDefaultAsync(n => n.Id == id, ct);
+            .FirstOrDefaultAsync(n => n.Id == id && n.Status == FoodNodeStatus.Active, ct);
 }
 
 internal sealed class UnitRepository : IUnitRepository

@@ -11,9 +11,12 @@ internal static class AuthEndpoints
 {
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/auth").WithTags("Auth");
+        var group = app.MapGroup("/auth")
+            .WithTags("Auth")
+            .RequireRateLimiting("AuthPerIp");
 
         group.MapPost("/register", async (
+            HttpContext http,
             RegisterRequest request,
             IValidator<RegisterRequest> validator,
             RegisterHandler handler,
@@ -23,25 +26,49 @@ internal static class AuthEndpoints
             if (!validation.IsValid)
                 return Results.ValidationProblem(validation.ToDictionary());
 
-            var result = await handler.HandleAsync(request, ct);
+            var clientContext = new Domain.Auth.AuthClientContext(
+                http.Request.Headers.UserAgent.ToString(),
+                http.Connection.RemoteIpAddress);
+
+            var result = await handler.HandleAsync(request, clientContext, ct);
             return result.ToHttpResult(StatusCodes.Status201Created);
         });
 
         group.MapPost("/login", async (
+            HttpContext http,
             LoginRequest request,
+            IValidator<LoginRequest> validator,
             LoginHandler handler,
             CancellationToken ct) =>
         {
-            var result = await handler.HandleAsync(request, ct);
+            var validation = await validator.ValidateAsync(request, ct);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
+            var clientContext = new Domain.Auth.AuthClientContext(
+                http.Request.Headers.UserAgent.ToString(),
+                http.Connection.RemoteIpAddress);
+
+            var result = await handler.HandleAsync(request, clientContext, ct);
             return result.ToHttpResult();
         });
 
         group.MapPost("/refresh", async (
+            HttpContext http,
             RefreshTokenRequest request,
+            IValidator<RefreshTokenRequest> validator,
             RefreshTokenHandler handler,
             CancellationToken ct) =>
         {
-            var result = await handler.HandleAsync(request, ct);
+            var validation = await validator.ValidateAsync(request, ct);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
+            var clientContext = new Domain.Auth.AuthClientContext(
+                http.Request.Headers.UserAgent.ToString(),
+                http.Connection.RemoteIpAddress);
+
+            var result = await handler.HandleAsync(request, clientContext, ct);
             return result.ToHttpResult();
         });
 

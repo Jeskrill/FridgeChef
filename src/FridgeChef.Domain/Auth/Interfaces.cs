@@ -1,5 +1,7 @@
 namespace FridgeChef.Domain.Auth;
 
+using System.Net;
+
 public interface IUserRepository
 {
     Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default);
@@ -13,6 +15,7 @@ public interface IRefreshTokenRepository
 {
     Task<RefreshToken?> GetByTokenHashAsync(string tokenHash, CancellationToken ct = default);
     Task AddAsync(RefreshToken token, CancellationToken ct = default);
+    Task<bool> RotateAsync(Guid tokenId, RefreshToken newToken, CancellationToken ct);
     Task RevokeAsync(Guid tokenId, CancellationToken ct = default);
     Task RevokeAllForUserAsync(Guid userId, CancellationToken ct = default);
 }
@@ -29,3 +32,11 @@ public interface IJwtTokenService
     string GenerateRefreshToken();
     string HashRefreshToken(string token);
 }
+
+public interface IAuthTransactionManager
+{
+    Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> operation, CancellationToken ct);
+    Task ExecuteAsync(Func<CancellationToken, Task> operation, CancellationToken ct);
+}
+
+public sealed record AuthClientContext(string? UserAgent, IPAddress? Ip);

@@ -39,12 +39,21 @@ public sealed class GetFavoritesHandler
 public sealed class AddFavoriteHandler
 {
     private readonly IFavoriteRecipeRepository _favorites;
-    public AddFavoriteHandler(IFavoriteRecipeRepository favorites) => _favorites = favorites;
+    private readonly IRecipeRepository _recipes;
+
+    public AddFavoriteHandler(
+        IFavoriteRecipeRepository favorites,
+        IRecipeRepository recipes)
+    {
+        _favorites = favorites;
+        _recipes = recipes;
+    }
 
     public async Task<Result> HandleAsync(Guid userId, Guid recipeId, CancellationToken ct = default)
     {
-        if (await _favorites.ExistsAsync(userId, recipeId, ct))
-            return Result.Success(); // Idempotent — PUT semantics
+        var recipe = await _recipes.GetByIdAsync(recipeId, ct);
+        if (recipe is null || recipe.Status != RecipeStatus.Published)
+            return DomainErrors.NotFound.Recipe(recipeId);
 
         await _favorites.AddAsync(new FavoriteRecipe
         {

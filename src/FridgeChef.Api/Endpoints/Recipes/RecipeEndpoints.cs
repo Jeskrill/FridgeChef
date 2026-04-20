@@ -4,6 +4,7 @@ using FridgeChef.Application.Recipes.GetRecipeDetail;
 using FridgeChef.Application.Recipes.MatchFromPantry;
 using FridgeChef.Api.Middleware;
 using FridgeChef.Domain.Common;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Recipes;
@@ -20,9 +21,24 @@ internal static class RecipeEndpoints
             string? q, long[]? diet, long[]? cuisine, int page, int pageSize,
             GetCatalogHandler handler, CancellationToken ct) =>
         {
+            var invalidDietIds = diet?.Any(id => id <= 0) == true;
+            var invalidCuisineIds = cuisine?.Any(id => id <= 0) == true;
+            if (invalidDietIds || invalidCuisineIds)
+            {
+                return Results.ValidationProblem(new Dictionary<string, string[]>
+                {
+                    ["ids"] = ["Diet and cuisine IDs must be positive."]
+                });
+            }
+
             var clampedPage     = Math.Max(1, page);
             var clampedPageSize = Math.Clamp(pageSize < 1 ? 20 : pageSize, 1, MaxPageSize);
-            var request = new GetCatalogRequest(q, diet, cuisine, clampedPage, clampedPageSize);
+            var request = new GetCatalogRequest(
+                q?.Trim(),
+                diet?.Distinct().ToArray(),
+                cuisine?.Distinct().ToArray(),
+                clampedPage,
+                clampedPageSize);
             var result = await handler.HandleAsync(request, ct);
             return Results.Ok(result);
         })
@@ -46,9 +62,14 @@ internal static class RecipeEndpoints
         group.MapPost("/search", async (
             HttpContext http,
             MatchRequest request,
+            IValidator<MatchRequest> validator,
             MatchHandler handler,
             CancellationToken ct) =>
         {
+            var validation = await validator.ValidateAsync(request, ct);
+            if (!validation.IsValid)
+                return Results.ValidationProblem(validation.ToDictionary());
+
             var userId = http.User.GetUserId();
             var result = await handler.HandleAsync(userId, request, ct);
             return Results.Ok(result);

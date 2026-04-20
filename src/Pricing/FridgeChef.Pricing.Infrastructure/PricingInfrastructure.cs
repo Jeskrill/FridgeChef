@@ -77,6 +77,9 @@ public static class PricingInfrastructureExtensions
         // Write-side (scraping)
         services.AddScoped<IPriceSyncRepository, PriceSyncRepository>();
         services.AddScoped<PriceSyncService>();
+        services.AddSingleton<PriceSyncRunner>();
+        services.Configure<PriceSyncOptions>(
+            configuration.GetSection(PriceSyncOptions.Section));
 
         // Puppeteer sidecar scraper — singleton (reuses HttpClient)
         services.Configure<PuppeteerScraperOptions>(

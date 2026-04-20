@@ -75,6 +75,40 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
             ct);
     }
 
+    public async Task PersistBestMatchAsync(
+        long retailerId,
+        IngredientToScrape ingredient,
+        ScrapedProduct best,
+        CancellationToken ct)
+    {
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+
+        var productId = await UpsertRetailerProductAsync(
+            retailerId,
+            best.ExternalSku,
+            best.Title,
+            best.Brand,
+            best.ProductUrl,
+            ct);
+
+        await InsertPriceSnapshotAsync(productId, best.RegularPrice, best.DiscountPrice, ct);
+
+        await _db.Database.ExecuteSqlRawAsync(
+            """
+            UPDATE pricing.ingredient_product_matches
+            SET is_primary = false
+            WHERE food_node_id = {0}
+              AND retailer_product_id <> {1}
+              AND is_primary = true
+            """,
+            [ingredient.FoodNodeId, productId],
+            ct);
+
+        await UpsertIngredientProductMatchAsync(ingredient.FoodNodeId, productId, ct);
+
+        await transaction.CommitAsync(ct);
+    }
+
     public async Task<IReadOnlyList<IngredientToScrape>> GetActiveIngredientsAsync(
         CancellationToken ct = default)
     {

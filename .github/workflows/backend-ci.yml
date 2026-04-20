@@ -1,0 +1,40 @@
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - "codex/**"
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Restore
+        run: dotnet restore FridgeChef.sln --disable-build-servers
+
+      - name: Build
+        run: dotnet build FridgeChef.sln --configuration Release --no-restore --disable-build-servers -m:1 /nr:false -p:UseSharedCompilation=false
+
+      - name: Test
+        run: dotnet test tests/FridgeChef.Backend.Tests/FridgeChef.Backend.Tests.csproj --configuration Release --no-build --disable-build-servers -m:1 /nr:false -p:UseSharedCompilation=false
+
+      - name: Validate Pricing Sidecar Syntax
+        run: node --check tools/scraper/server.js

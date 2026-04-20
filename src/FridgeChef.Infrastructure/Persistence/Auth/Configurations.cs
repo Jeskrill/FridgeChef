@@ -36,9 +36,16 @@ internal sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refre
         builder.Property(t => t.ExpiresAt).HasColumnName("expires_at");
         builder.Property(t => t.RevokedAt).HasColumnName("revoked_at");
         builder.Property(t => t.UserAgent).HasColumnName("user_agent");
-        builder.Property(t => t.Ip).HasColumnName("ip");
+        builder.Property(t => t.Ip).HasColumnName("ip").HasColumnType("inet");
         builder.Property(t => t.CreatedAt).HasColumnName("created_at");
         builder.HasOne(t => t.User).WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(t => t.TokenHash)
+            .HasDatabaseName("uq_refresh_tokens_active_token_hash")
+            .HasFilter("revoked_at IS NULL")
+            .IsUnique();
+        builder.HasIndex(t => t.UserId)
+            .HasDatabaseName("ix_refresh_tokens_active_user_id")
+            .HasFilter("revoked_at IS NULL");
         builder.Ignore(t => t.IsRevoked);
     }
 }

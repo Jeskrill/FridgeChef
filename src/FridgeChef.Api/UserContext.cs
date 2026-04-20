@@ -30,5 +30,7 @@ internal static class UserContext
             "JWT sub claim is missing or not a valid Guid. Check token generation configuration.");
 
     public static bool IsAdmin(this ClaimsPrincipal user) =>
-        user.IsInRole("Admin");
+        user.Claims.Any(claim =>
+            claim.Type == ClaimTypes.Role &&
+            string.Equals(claim.Value, "admin", StringComparison.OrdinalIgnoreCase));
 }
