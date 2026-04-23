@@ -6,9 +6,6 @@ using Microsoft.Extensions.Logging;
 
 namespace FridgeChef.Pricing.Infrastructure.BackgroundJobs;
 
-// Runs the daily price sync.
-// Auto-sync is DISABLED by default — use POST /admin/pricing/sync to trigger manually.
-// Set Pricing:AutoSync=true in config to enable automatic daily sync.
 public sealed class PriceSyncBackgroundService : BackgroundService
 {
     private readonly PriceSyncRunner _priceSyncRunner;

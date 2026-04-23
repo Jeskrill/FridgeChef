@@ -1,13 +1,11 @@
 using FridgeChef.Catalog.Application.UseCases.MatchFromPantry;
+using FridgeChef.UserPreferences.Application.UseCases;
 using FridgeChef.UserPreferences.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FridgeChef.UserPreferences.Infrastructure;
-
-// ── Internal EF entities ──────────────────────────────────────────
-
 
 internal sealed class UserPreferredCuisineEntity
 {
@@ -44,8 +42,6 @@ internal sealed class UserDefaultDietEntity
     public long TaxonId { get; set; }
     public DateTime CreatedAt { get; set; }
 }
-
-// ── DbContext ────────────────────────────────────────────────────
 
 internal sealed class UserPreferencesDbContext : DbContext
 {
@@ -91,64 +87,66 @@ internal sealed class UserPreferencesDbContext : DbContext
     }
 }
 
-// ── Repository ───────────────────────────────────────────────────
-
 internal sealed class UserPreferencesRepository : IUserPreferencesRepository
 {
     private readonly UserPreferencesDbContext _db;
     public UserPreferencesRepository(UserPreferencesDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<UserAllergen>> GetAllergensAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AllergenResponse>> GetAllergensAsync(Guid userId, CancellationToken ct = default)
     {
         var entities = await _db.UserAllergens.Where(a => a.UserId == userId).ToListAsync(ct);
-        return entities.Select(e => new UserAllergen(e.UserId, e.FoodNodeId,
-            Enum.TryParse<AllergenSeverity>(e.Severity, true, out var s) ? s : AllergenSeverity.Strict,
-            e.CreatedAt)).ToList();
+        return entities.Select(e => new AllergenResponse(e.FoodNodeId, e.Severity)).ToList();
     }
 
-    public async Task AddAllergenAsync(UserAllergen allergen, CancellationToken ct = default)
+    public async Task AddAllergenAsync(Guid userId, AddAllergenRequest request, CancellationToken ct = default)
     {
-        _db.UserAllergens.Add(new UserAllergenEntity { UserId = allergen.UserId, FoodNodeId = allergen.FoodNodeId, Severity = allergen.Severity.ToString().ToLowerInvariant(), CreatedAt = allergen.CreatedAt });
+        _db.UserAllergens.Add(new UserAllergenEntity
+        {
+            UserId = userId,
+            FoodNodeId = request.FoodNodeId,
+            Severity = request.Severity.ToLowerInvariant(),
+            CreatedAt = DateTime.UtcNow
+        });
         await _db.SaveChangesAsync(ct);
     }
 
     public async Task RemoveAllergenAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
         await _db.UserAllergens.Where(a => a.UserId == userId && a.FoodNodeId == foodNodeId).ExecuteDeleteAsync(ct);
 
-    public async Task<IReadOnlyList<UserFavoriteFood>> GetFavoriteFoodsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<FavoriteFoodResponse>> GetFavoriteFoodsAsync(Guid userId, CancellationToken ct = default)
     {
         var entities = await _db.UserFavoriteFoods.Where(f => f.UserId == userId).ToListAsync(ct);
-        return entities.Select(e => new UserFavoriteFood(e.UserId, e.FoodNodeId, e.Weight, e.CreatedAt)).ToList();
+        return entities.Select(e => new FavoriteFoodResponse(e.FoodNodeId)).ToList();
     }
 
-    public async Task AddFavoriteFoodAsync(UserFavoriteFood food, CancellationToken ct = default)
+    public async Task AddFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default)
     {
-        _db.UserFavoriteFoods.Add(new UserFavoriteFoodEntity { UserId = food.UserId, FoodNodeId = food.FoodNodeId, Weight = food.Weight, CreatedAt = food.CreatedAt });
+        _db.UserFavoriteFoods.Add(new UserFavoriteFoodEntity { UserId = userId, FoodNodeId = foodNodeId, Weight = 1.0m, CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync(ct);
     }
 
     public async Task RemoveFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
         await _db.UserFavoriteFoods.Where(f => f.UserId == userId && f.FoodNodeId == foodNodeId).ExecuteDeleteAsync(ct);
 
-    public async Task<IReadOnlyList<UserExcludedFood>> GetExcludedFoodsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ExcludedFoodResponse>> GetExcludedFoodsAsync(Guid userId, CancellationToken ct = default)
     {
         var entities = await _db.UserExcludedFoods.Where(e => e.UserId == userId).ToListAsync(ct);
-        return entities.Select(e => new UserExcludedFood(e.UserId, e.FoodNodeId, e.CreatedAt)).ToList();
+        return entities.Select(e => new ExcludedFoodResponse(e.FoodNodeId)).ToList();
     }
 
-    public async Task AddExcludedFoodAsync(UserExcludedFood food, CancellationToken ct = default)
+    public async Task AddExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default)
     {
-        _db.UserExcludedFoods.Add(new UserExcludedFoodEntity { UserId = food.UserId, FoodNodeId = food.FoodNodeId, CreatedAt = food.CreatedAt });
+        _db.UserExcludedFoods.Add(new UserExcludedFoodEntity { UserId = userId, FoodNodeId = foodNodeId, CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync(ct);
     }
 
     public async Task RemoveExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
         await _db.UserExcludedFoods.Where(e => e.UserId == userId && e.FoodNodeId == foodNodeId).ExecuteDeleteAsync(ct);
 
-    public async Task<IReadOnlyList<UserDefaultDiet>> GetDefaultDietsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserDietResponse>> GetDefaultDietsAsync(Guid userId, CancellationToken ct = default)
     {
         var entities = await _db.UserDefaultDiets.Where(d => d.UserId == userId).ToListAsync(ct);
-        return entities.Select(e => new UserDefaultDiet(e.UserId, e.TaxonId, e.CreatedAt)).ToList();
+        return entities.Select(e => new UserDietResponse(e.TaxonId)).ToList();
     }
 
     public async Task ReplaceDefaultDietsAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default)
@@ -177,10 +175,10 @@ internal sealed class UserPreferencesRepository : IUserPreferencesRepository
         return ids.ToHashSet();
     }
 
-    public async Task<IReadOnlyList<UserPreferredCuisine>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserCuisineResponse>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct = default)
     {
         var entities = await _db.UserPreferredCuisines.Where(c => c.UserId == userId).ToListAsync(ct);
-        return entities.Select(e => new UserPreferredCuisine(e.UserId, e.TaxonId, e.CreatedAt)).ToList();
+        return entities.Select(e => new UserCuisineResponse(e.TaxonId)).ToList();
     }
 
     public async Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default)
@@ -198,8 +196,6 @@ internal sealed class UserPreferencesRepository : IUserPreferencesRepository
     }
 }
 
-// ── Cross-BC Supplier Adapter ────────────────────────────────────
-
 internal sealed class UserPreferencesSupplierAdapter : IUserPreferencesSupplier
 {
     private readonly IUserPreferencesRepository _prefs;
@@ -208,8 +204,6 @@ internal sealed class UserPreferencesSupplierAdapter : IUserPreferencesSupplier
     public Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default) =>
         _prefs.GetAllergenFoodNodeIdsAsync(userId, ct);
 }
-
-// ── DI Extension ────────────────────────────────────────────────
 
 public static class UserPreferencesInfrastructureExtensions
 {
@@ -225,7 +219,6 @@ public static class UserPreferencesInfrastructureExtensions
 
         services.AddScoped<IUserPreferencesRepository, UserPreferencesRepository>();
 
-        // Cross-BC supplier for MatchFromPantry use case
         services.AddScoped<IUserPreferencesSupplier, UserPreferencesSupplierAdapter>();
 
         return services;

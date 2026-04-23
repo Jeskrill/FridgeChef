@@ -9,7 +9,6 @@ public sealed record MatchRequest(
     long[]? DietFilterIds = null,
     int MaxResults = 50);
 
-// Валидация запроса на подбор рецептов из холодильника.
 public sealed class MatchRequestValidator : AbstractValidator<MatchRequest>
 {
     public MatchRequestValidator()
@@ -25,8 +24,6 @@ public sealed record MatchResultResponse(
     int TotalIngredientCount,
     IReadOnlyList<string> MissingIngredients);
 
-// Matches recipes to user's pantry using food node hierarchy expansion.
-// Depends on pantry, preferences, ontology (via interfaces defined in their respective Domains).
 public sealed class MatchFromPantryHandler
 {
     private readonly IPantrySupplier _pantry;
@@ -97,25 +94,16 @@ public sealed class MatchFromPantryHandler
     }
 }
 
-// ────────────────────────────────────────────────────────────────────
-//  Cross-BC supplier interfaces (anti-corruption layer)
-//  These keep Catalog.Application independent from Pantry/Preferences/Ontology.
-//  Each BC's Infrastructure implements its own supplier.
-// ────────────────────────────────────────────────────────────────────
-
-// Abstracts pantry data access for the match use case.
 public interface IPantrySupplier
 {
     Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct = default);
 }
 
-// Abstracts user preferences access for the match use case.
 public interface IUserPreferencesSupplier
 {
     Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
 }
 
-// Abstracts food hierarchy expansion for the match use case.
 public interface IFoodHierarchySupplier
 {
     Task<IReadOnlySet<long>> ExpandDescendantsAsync(IEnumerable<long> foodNodeIds, CancellationToken ct = default);

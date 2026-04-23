@@ -5,6 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Admin\FridgeChef.Admin.Application\FridgeChef.Admin.Application.csproj" />
+    <ProjectReference Include="..\FridgeChef.Catalog.Application\FridgeChef.Catalog.Application.csproj" />
     <ProjectReference Include="..\FridgeChef.Catalog.Domain\FridgeChef.Catalog.Domain.csproj" />
     <ProjectReference Include="..\..\Shared\FridgeChef.SharedKernel\FridgeChef.SharedKernel.csproj" />
   </ItemGroup>

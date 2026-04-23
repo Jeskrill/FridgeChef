@@ -10,7 +10,7 @@ internal static class ReferenceEndpoints
 {
     public static void MapReferenceEndpoints(this IEndpointRouteBuilder app)
     {
-        // ── GET /units ──────────────────────────────────────────────────────────
+
         app.MapGet("/units", async (GetUnitsHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(ct)))
             .WithTags("Reference")
@@ -29,7 +29,6 @@ internal static class ReferenceEndpoints
                 Этот эндпоинт открытый, авторизация не нужна.
                 """);
 
-        // ── GET /taxons ─────────────────────────────────────────────────────────
         app.MapGet("/taxons", async (string? kind, [FromServices] GetTaxonsHandler handler, CancellationToken ct) =>
         {
             if (!string.IsNullOrWhiteSpace(kind) && !Enum.TryParse<TaxonKind>(kind, true, out _))

@@ -3,7 +3,6 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace FridgeChef.Api.Extensions;
 
-// Добавляет описания к тегам Swagger.
 internal sealed class TagDescriptionsDocumentFilter : IDocumentFilter
 {
     private static readonly Dictionary<string, string> Descriptions = new()

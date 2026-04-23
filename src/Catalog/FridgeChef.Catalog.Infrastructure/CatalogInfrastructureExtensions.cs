@@ -1,4 +1,5 @@
-using FridgeChef.Catalog.Domain;
+using FridgeChef.Admin.Application.UseCases;
+using FridgeChef.Catalog.Application;
 using FridgeChef.Catalog.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -20,6 +21,9 @@ public static class CatalogInfrastructureExtensions
                 npgsql.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)));
 
         services.AddScoped<IRecipeRepository, RecipeRepository>();
+
+        services.AddScoped<IAdminRecipeReader, AdminRecipeAdapter>();
+        services.AddScoped<IAdminRecipeWriter, AdminRecipeAdapter>();
 
         return services;
     }

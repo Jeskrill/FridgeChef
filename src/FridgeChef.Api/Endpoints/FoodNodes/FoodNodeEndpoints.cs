@@ -11,7 +11,6 @@ internal static class FoodNodeEndpoints
     {
         var group = app.MapGroup("/food-nodes").WithTags("FoodNodes");
 
-        // ── GET /food-nodes ─────────────────────────────────────────────────────
         group.MapGet("/", async (string? q, [FromServices] SearchFoodNodesHandler handler, CancellationToken ct) =>
         {
             var normalizedQuery = q?.Trim();
@@ -42,7 +41,6 @@ internal static class FoodNodeEndpoints
             - `GET /food-nodes?q=молоко` → найдёт различные виды молока
             """);
 
-        // ── GET /food-nodes/{id} ────────────────────────────────────────────────
         group.MapGet("/{id:long}", async (long id, [FromServices] GetFoodNodeHandler handler, CancellationToken ct) =>
         {
             if (id <= 0)

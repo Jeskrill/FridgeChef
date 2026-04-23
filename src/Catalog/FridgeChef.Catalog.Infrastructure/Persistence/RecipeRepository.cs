@@ -1,3 +1,6 @@
+using FridgeChef.Catalog.Application;
+using FridgeChef.Catalog.Application.Converters;
+using FridgeChef.Catalog.Application.Dto;
 using FridgeChef.Catalog.Domain;
 using FridgeChef.Catalog.Infrastructure.Persistence.Converters;
 using FridgeChef.Catalog.Infrastructure.Persistence.Entities;
@@ -6,16 +9,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FridgeChef.Catalog.Infrastructure.Persistence;
 
-// Implements IRecipeRepository using EF Core + CatalogDbContext.
-// Converts internal entities to domain records before returning.
-// The Application layer never sees EF entities.
 internal sealed class RecipeRepository : IRecipeRepository
 {
     private readonly CatalogDbContext _db;
 
     public RecipeRepository(CatalogDbContext db) => _db = db;
 
-    public async Task<Recipe?> GetBySlugAsync(string slug, CancellationToken ct = default)
+    public async Task<RecipeDetailResponse?> GetDetailBySlugAsync(string slug, CancellationToken ct = default)
     {
         var entity = await _db.Recipes
             .AsSplitQuery()
@@ -29,24 +29,10 @@ internal sealed class RecipeRepository : IRecipeRepository
             .Include(r => r.Allergens)
             .FirstOrDefaultAsync(r => r.Slug == slug && r.Status == "published", ct);
 
-        return entity?.ToDomain();
+        return entity?.ToDomain().ToDetailDto();
     }
 
-    public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var entity = await _db.Recipes
-            .AsSplitQuery()
-            .Include(r => r.Ingredients)
-            .Include(r => r.Steps)
-            .Include(r => r.Media)
-            .Include(r => r.Nutrition)
-            .Include(r => r.RecipeTaxons)
-            .FirstOrDefaultAsync(r => r.Id == id, ct);
-
-        return entity?.ToDomain();
-    }
-
-    public async Task<PagedResult<Recipe>> GetCatalogAsync(
+    public async Task<PagedResult<RecipeCardResponse>> GetCatalogAsync(
         string? query,
         long[]? dietIds,
         long[]? cuisineIds,
@@ -79,8 +65,22 @@ internal sealed class RecipeRepository : IRecipeRepository
             .Include(r => r.Ingredients)
             .ToListAsync(ct);
 
-        var items = entities.Select(e => e.ToDomain()).ToList();
-        return new PagedResult<Recipe>(items, totalCount, paging.EffectivePage, paging.EffectivePageSize);
+        var cards = entities.Select(e => e.ToDomain().ToCardDto()).ToList();
+        return new PagedResult<RecipeCardResponse>(cards, totalCount, paging.EffectivePage, paging.EffectivePageSize);
+    }
+
+    public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var entity = await _db.Recipes
+            .AsSplitQuery()
+            .Include(r => r.Ingredients)
+            .Include(r => r.Steps)
+            .Include(r => r.Media)
+            .Include(r => r.Nutrition)
+            .Include(r => r.RecipeTaxons)
+            .FirstOrDefaultAsync(r => r.Id == id, ct);
+
+        return entity?.ToDomain();
     }
 
     public async Task<IReadOnlyList<Recipe>> GetByFoodNodeIdsAsync(
@@ -102,7 +102,6 @@ internal sealed class RecipeRepository : IRecipeRepository
         if (dietFilterTaxonIds is { Length: > 0 })
             q = q.Where(r => r.RecipeTaxons.Any(rt => dietFilterTaxonIds.Contains(rt.TaxonId)));
 
-        // Step 1: get matching IDs (fast, no JOINs)
         var matchingIds = await q
             .Take(limit)
             .Select(r => r.Id)
@@ -110,7 +109,6 @@ internal sealed class RecipeRepository : IRecipeRepository
 
         if (matchingIds.Count == 0) return [];
 
-        // Step 2: load full graph for those IDs
         var entities = await _db.Recipes
             .Where(r => matchingIds.Contains(r.Id))
             .AsSplitQuery()
@@ -122,7 +120,6 @@ internal sealed class RecipeRepository : IRecipeRepository
 
         return entities.Select(e => e.ToDomain()).ToList();
     }
-
 
     public Task<int> CountAsync(CancellationToken ct = default) =>
         _db.Recipes.CountAsync(ct);
@@ -145,6 +142,7 @@ internal sealed class RecipeRepository : IRecipeRepository
             .Select(r => new RecipeSummary(r.Id, r.Slug, r.Title, r.ImageUrl))
             .ToList();
     }
+
     public async Task UpdateStatusAsync(Guid id, RecipeStatus status, CancellationToken ct = default)
     {
         await _db.Recipes

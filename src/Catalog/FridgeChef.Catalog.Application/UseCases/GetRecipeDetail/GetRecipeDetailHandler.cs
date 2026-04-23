@@ -1,6 +1,4 @@
-using FridgeChef.Catalog.Application.Converters;
 using FridgeChef.Catalog.Application.Dto;
-using FridgeChef.Catalog.Domain;
 using FridgeChef.SharedKernel;
 
 namespace FridgeChef.Catalog.Application.UseCases.GetRecipeDetail;
@@ -14,11 +12,11 @@ public sealed class GetRecipeDetailHandler
     public async Task<Result<RecipeDetailResponse>> HandleAsync(
         string slug, CancellationToken ct = default)
     {
-        var recipe = await _recipes.GetBySlugAsync(slug, ct);
+        var detail = await _recipes.GetDetailBySlugAsync(slug, ct);
 
-        if (recipe is null)
+        if (detail is null)
             return DomainErrors.NotFound.RecipeBySlug(slug);
 
-        return recipe.ToDetailDto();
+        return detail;
     }
 }

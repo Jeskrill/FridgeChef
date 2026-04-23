@@ -13,8 +13,6 @@ internal static class SettingsEndpoints
             .WithTags("Settings")
             .RequireAuthorization();
 
-        // ── Allergens ───────────────────────────────────────────────────────────
-
         group.MapGet("/allergens", async (HttpContext http, [FromServices] GetAllergensHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<AllergenResponse>>()
@@ -67,8 +65,6 @@ internal static class SettingsEndpoints
         .WithSummary("Удалить аллерген")
         .WithDescription("Удаляет продукт из списка аллергенов. Требуется JWT-авторизация.");
 
-        // ── Favorite Foods ──────────────────────────────────────────────────────
-
         group.MapGet("/favorite-foods", async (HttpContext http, [FromServices] GetFavoriteFoodsHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<FavoriteFoodResponse>>()
@@ -113,8 +109,6 @@ internal static class SettingsEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .WithSummary("Удалить любимый продукт")
         .WithDescription("Удаляет продукт из списка любимых. Требуется JWT-авторизация.");
-
-        // ── Excluded Foods ──────────────────────────────────────────────────────
 
         group.MapGet("/excluded-foods", async (HttpContext http, [FromServices] GetExcludedFoodsHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
@@ -161,8 +155,6 @@ internal static class SettingsEndpoints
         .WithSummary("Удалить продукт из исключений")
         .WithDescription("Удаляет продукт из списка нежелательных. Требуется JWT-авторизация.");
 
-        // ── Diets ───────────────────────────────────────────────────────────────
-
         group.MapGet("/diets", async (HttpContext http, [FromServices] GetDietsHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))
         .Produces<IReadOnlyList<UserDietResponse>>()
@@ -198,8 +190,6 @@ internal static class SettingsEndpoints
             Максимум 50 уникальных ID. Список ID: `GET /taxons?kind=Diet`.
             Требуется JWT-авторизация.
             """);
-
-        // ── Cuisines ────────────────────────────────────────────────────────────
 
         group.MapGet("/cuisines", async (HttpContext http, [FromServices] GetCuisinesHandler handler, CancellationToken ct) =>
             Results.Ok(await handler.HandleAsync(http.User.GetUserId(), ct)))

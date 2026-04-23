@@ -13,7 +13,6 @@ internal static class ProfileEndpoints
             .WithTags("Profile")
             .RequireAuthorization();
 
-        // ── GET /users/me ───────────────────────────────────────────────────────
         group.MapGet("/me", async (HttpContext http, [FromServices] GetProfileHandler handler, CancellationToken ct) =>
         {
             var result = await handler.HandleAsync(http.User.GetUserId(), ct);
@@ -29,7 +28,6 @@ internal static class ProfileEndpoints
             Требуется JWT-авторизация.
             """);
 
-        // ── PATCH /users/me ─────────────────────────────────────────────────────
         group.MapPatch("/me", async (
             HttpContext http,
             UpdateProfileRequest request,
@@ -56,8 +54,7 @@ internal static class ProfileEndpoints
             Требуется JWT-авторизация.
             """);
 
-        // ── POST /users/me/change-password ──────────────────────────────────────
-        group.MapPost("/me/change-password", async (
+        group.MapPut("/me/password", async (
             HttpContext http,
             ChangePasswordRequest request,
             IValidator<ChangePasswordRequest> validator,

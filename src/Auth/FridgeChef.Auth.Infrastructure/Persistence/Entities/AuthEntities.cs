@@ -1,8 +1,5 @@
 namespace FridgeChef.Auth.Infrastructure.Persistence.Entities;
 
-// EF Core entities — internal to Auth.Infrastructure
-// Never cross the boundary into Application or Domain
-
 internal sealed class UserEntity
 {
     public Guid Id { get; set; }

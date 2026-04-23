@@ -1,15 +1,12 @@
 using FridgeChef.Admin.Application.UseCases;
+using FridgeChef.Auth.Application.UseCases;
 using FridgeChef.Auth.Domain;
-using FridgeChef.Catalog.Application.Dto;
+using FridgeChef.Catalog.Application;
 using FridgeChef.Catalog.Domain;
 using FridgeChef.Favorites.Application.UseCases;
-using FridgeChef.Favorites.Domain;
-using Microsoft.EntityFrameworkCore;
 
 namespace FridgeChef.Api.CrossBc;
 
-// Адаптер, позволяющий Favorites.Application получать данные рецептов из Catalog.Infrastructure.
-// Реализует IRecipeSummaryProvider по контракту Favorites BC без прямой зависимости на Catalog.Domain.
 internal sealed class CatalogRecipeSummaryProvider(IRecipeRepository recipes) : IRecipeSummaryProvider
 {
     public async Task<IReadOnlyList<RecipeSummaryDto>> GetByIdsAsync(
@@ -25,18 +22,22 @@ internal sealed class CatalogRecipeSummaryProvider(IRecipeRepository recipes) : 
     }
 }
 
-// Адаптер чтения пользователей для Admin BC.
 internal sealed class AuthUserAdminReader(IUserRepository users) : IAdminUserReader
 {
-    public async Task<IReadOnlyList<User>> GetAllAsync(string? query, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AdminUserResponse>> GetAllAsync(string? query, CancellationToken ct = default)
     {
         var all = await users.GetAllAsync(ct);
-        if (string.IsNullOrWhiteSpace(query))
-            return all;
-        var q = query.Trim().ToLowerInvariant();
-        return all.Where(u =>
-            u.Email.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-            u.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase)).ToList();
+        IEnumerable<User> filtered = all;
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var q = query.Trim().ToLowerInvariant();
+            filtered = all.Where(u =>
+                u.Email.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                u.DisplayName.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+        return filtered
+            .Select(u => new AdminUserResponse(u.Id, u.DisplayName, u.Email, u.Role, u.IsBlocked, u.LastLoginAt, u.CreatedAt))
+            .ToList();
     }
 
     public async Task<int> CountAsync(CancellationToken ct = default)
@@ -46,21 +47,6 @@ internal sealed class AuthUserAdminReader(IUserRepository users) : IAdminUserRea
     }
 }
 
-// Адаптер для статистики рецептов в Admin BC.
-internal sealed class CatalogAdminRecipeReader(IRecipeRepository recipes) : IAdminRecipeReader
-{
-    public Task<int> CountAsync(CancellationToken ct = default) =>
-        recipes.CountAsync(ct);
-
-    public async Task<AdminPopularRecipeResponse?> GetSummaryByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var summaries = await recipes.GetSummariesByIdsAsync([id], ct);
-        var r = summaries.FirstOrDefault();
-        return r is null ? null : new AdminPopularRecipeResponse(r.Id, r.Slug, r.Title, r.ImageUrl, 0);
-    }
-}
-
-// Адаптер для статистики избранного в Admin BC.
 internal sealed class FavoritesAdminReader(IFavoriteRecipeRepository favorites) : IAdminFavoritesReader
 {
     public Task<int> CountTotalAsync(CancellationToken ct = default) =>
@@ -71,14 +57,12 @@ internal sealed class FavoritesAdminReader(IFavoriteRecipeRepository favorites) 
         favorites.GetMostFavoritedAsync(limit, ct);
 }
 
-// Регистрация всех кросс-BC адаптеров в DI.
 public static class CrossBcAdapterExtensions
 {
     public static IServiceCollection AddCrossBcAdapters(this IServiceCollection services)
     {
         services.AddScoped<IRecipeSummaryProvider, CatalogRecipeSummaryProvider>();
         services.AddScoped<IAdminUserReader, AuthUserAdminReader>();
-        services.AddScoped<IAdminRecipeReader, CatalogAdminRecipeReader>();
         services.AddScoped<IAdminFavoritesReader, FavoritesAdminReader>();
         return services;
     }

@@ -17,9 +17,3 @@ public sealed record Taxon(
     string Name,
     string Slug,
     string? Description);
-
-public interface ITaxonRepository
-{
-    Task<IReadOnlyList<Taxon>> GetByKindAsync(TaxonKind kind, CancellationToken ct = default);
-    Task<IReadOnlyList<Taxon>> GetAllAsync(CancellationToken ct = default);
-}

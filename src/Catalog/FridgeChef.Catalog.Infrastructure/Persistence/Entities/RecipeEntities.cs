@@ -1,11 +1,5 @@
 namespace FridgeChef.Catalog.Infrastructure.Persistence.Entities;
 
-// ────────────────────────────────────────────────────────────────────
-//  Internal EF Core entities — never exposed outside Infrastructure.
-//  These classes exist purely to interface with the database.
-//  All public-facing types are Domain records.
-// ────────────────────────────────────────────────────────────────────
-
 internal sealed class RecipeEntity
 {
     public Guid Id { get; set; }

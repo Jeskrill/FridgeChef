@@ -11,7 +11,7 @@ internal static class PricingEndpoints
 
     public static void MapPricingEndpoints(this IEndpointRouteBuilder app)
     {
-        // ── GET /pricing/ingredients ────────────────────────────────────────────
+
         app.MapGet("/pricing/ingredients", async (
             [FromQuery] long[] ids,
             [FromServices] GetPricesHandler handler,
@@ -54,19 +54,19 @@ internal static class PricingEndpoints
             Открытый эндпоинт, авторизация не нужна.
             """);
 
-        // ── Admin Pricing ───────────────────────────────────────────────────────
         var adminGroup = app.MapGroup("/admin/pricing")
             .WithTags("Admin - Pricing")
             .RequireAuthorization("AdminOnly")
             .RequireRateLimiting("AdminPerIdentity");
 
-        // GET /admin/pricing/status
         adminGroup.MapGet("/status", async (
             [FromServices] PriceSyncRunner priceSyncRunner,
+            [FromServices] IPriceSyncRepository syncRepo,
             PuppeteerPyaterochkaScraper scraper,
             CancellationToken ct) =>
         {
             var (ready, error) = await scraper.CheckHealthAsync(ct);
+            var stats = await syncRepo.GetStatsAsync(ct);
             return Results.Ok(new
             {
                 scraperType = "puppeteer_sidecar",
@@ -74,13 +74,17 @@ internal static class PricingEndpoints
                 sidecarError = error,
                 syncRunning = priceSyncRunner.IsRunning,
                 retailer = scraper.RetailerCode,
+
+                updatedProductsCount = stats.UpdatedProductsCount,
+                missingPricesCount = stats.MissingPricesCount,
+                lastSyncAt = stats.LastSyncAt,
                 instructions = !ready
                     ? "Start sidecar: cd tools/scraper && node server.js"
-                    : "Ready. POST to /admin/pricing/sync to start.",
+                    : "Ready. POST to /admin/pricing/synchronization to start.",
             });
         })
         .Produces(StatusCodes.Status200OK)
-        .WithSummary("Статус Puppeteer-sidecar")
+        .WithSummary("Статус Puppeteer-sidecar и статистика цен")
         .WithDescription("""
             Проверяет доступность Puppeteer Node.js sidecar, который используется
             для скрапинга цен с сайта Пятёрочки (5ka.ru).
@@ -89,13 +93,15 @@ internal static class PricingEndpoints
             - `sidecarReady` — доступен ли sidecar
             - `sidecarError` — причина недоступности (если есть)
             - `syncRunning` — идёт ли сейчас синхронизация
+            - `updatedProductsCount` — количество позиций с актуальной ценой
+            - `missingPricesCount` — количество позиций без цены
+            - `lastSyncAt` — дата последней синхронизации
             - `instructions` — как запустить sidecar если он недоступен
 
             **Только для администраторов.**
             """);
 
-        // POST /admin/pricing/sync
-        adminGroup.MapPost("/sync", async (
+        adminGroup.MapPost("/synchronization", async (
             [FromServices] PriceSyncRunner priceSyncRunner,
             CancellationToken ct) =>
         {
@@ -125,8 +131,7 @@ internal static class PricingEndpoints
             **Только для администраторов.**
             """);
 
-        // POST /admin/pricing/reconnect
-        adminGroup.MapPost("/reconnect", async (
+        adminGroup.MapPost("/connection", async (
             PuppeteerPyaterochkaScraper scraper,
             CancellationToken ct) =>
         {
@@ -141,8 +146,7 @@ internal static class PricingEndpoints
             **Только для администраторов.**
             """);
 
-        // POST /admin/pricing/search-test
-        adminGroup.MapPost("/search-test", async (
+        adminGroup.MapPost("/test-queries", async (
             [FromBody] SearchTestRequest request,
             PuppeteerPyaterochkaScraper scraper,
             CancellationToken ct) =>

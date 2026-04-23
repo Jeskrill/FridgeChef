@@ -1,4 +1,4 @@
-using FridgeChef.Ontology.Domain;
+using FridgeChef.Ontology.Application.UseCases;
 using FridgeChef.Ontology.Infrastructure.Persistence.Configurations;
 using FridgeChef.Ontology.Infrastructure.Persistence.Converters;
 using FridgeChef.Ontology.Infrastructure.Persistence.Entities;
@@ -12,13 +12,13 @@ internal sealed class FoodNodeRepository : IFoodNodeRepository
     private readonly OntologyDbContext _db;
     public FoodNodeRepository(OntologyDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<FoodNodeSearchResult>> SearchAsync(
+    public async Task<IReadOnlyList<FoodNodeSearchResponse>> SearchAsync(
         string query, int limit = 10, CancellationToken ct = default)
     {
         var normalized = query.Trim().ToLowerInvariant();
 
         var results = await _db.Database
-            .SqlQueryRaw<FoodNodeSearchResult>(
+            .SqlQueryRaw<FoodNodeSearchResponse>(
                 """
                 SELECT DISTINCT ON (fn.id)
                     fn.id AS "Id",
@@ -38,12 +38,20 @@ internal sealed class FoodNodeRepository : IFoodNodeRepository
         return results.OrderByDescending(r => r.Similarity).ToList();
     }
 
-    public async Task<FoodNode?> GetByIdAsync(long id, CancellationToken ct = default)
+    public async Task<FoodNodeResponse?> GetByIdAsync(long id, CancellationToken ct = default)
     {
         var entity = await _db.FoodNodes
             .Include(n => n.Aliases)
             .FirstOrDefaultAsync(n => n.Id == id, ct);
-        return entity?.ToDomain();
+
+        if (entity is null) return null;
+
+        return new FoodNodeResponse(
+            entity.Id,
+            entity.CanonicalName,
+            entity.Slug,
+            entity.NodeKind,
+            entity.Status);
     }
 }
 
@@ -52,15 +60,14 @@ internal sealed class UnitRepository : IUnitRepository
     private readonly OntologyDbContext _db;
     public UnitRepository(OntologyDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<Unit>> GetAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<UnitResponse>> GetAllAsync(CancellationToken ct = default)
     {
         var entities = await _db.Units.OrderBy(u => u.Name).ToListAsync(ct);
-        return entities.Select(e => e.ToDomain()).ToList();
+        return entities.Select(e => new UnitResponse(e.Id, e.Code, e.Name, e.Symbol)).ToList();
     }
 }
 
-// Handles food hierarchy expansion queries.
-internal sealed class FoodHierarchyRepository : IFoodHierarchyRepository
+internal sealed class FoodHierarchyRepository : Ontology.Domain.IFoodHierarchyRepository
 {
     private readonly OntologyDbContext _db;
     public FoodHierarchyRepository(OntologyDbContext db) => _db = db;
@@ -104,27 +111,25 @@ internal sealed class TaxonRepository : ITaxonRepository
     private readonly OntologyDbContext _db;
     public TaxonRepository(OntologyDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<Taxon>> GetByKindAsync(TaxonKind kind, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaxonResponse>> GetByKindAsync(TaxonKind kind, CancellationToken ct = default)
     {
         var kindStr = ToSnakeCase(kind.ToString());
         var entities = await _db.Taxons.Where(t => t.Kind == kindStr).ToListAsync(ct);
-        return entities.Select(ToDomain).ToList();
+        return entities.Select(ToDto).ToList();
     }
 
-    public async Task<IReadOnlyList<Taxon>> GetAllAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaxonResponse>> GetAllAsync(CancellationToken ct = default)
     {
         var entities = await _db.Taxons.OrderBy(t => t.Name).ToListAsync(ct);
-        return entities.Select(ToDomain).ToList();
+        return entities.Select(ToDto).ToList();
     }
 
-    private static Taxon ToDomain(TaxonEntity e) => new(
+    private static TaxonResponse ToDto(TaxonEntity e) => new(
         Id: e.Id,
-        Kind: Enum.TryParse<TaxonKind>(e.Kind.Replace("_", ""), ignoreCase: true, out var k) ? k : TaxonKind.Diet,
         Name: e.Name,
         Slug: e.Slug,
-        Description: e.Description);
+        Kind: (Enum.TryParse<TaxonKind>(e.Kind.Replace("_", ""), ignoreCase: true, out var k) ? k : TaxonKind.Diet).ToString());
 
-    // Converts PascalCase enum name to snake_case for DB lookup.
     private static string ToSnakeCase(string name) =>
         string.Concat(name.Select((c, i) =>
             i > 0 && char.IsUpper(c) ? "_" + char.ToLower(c) : char.ToLower(c).ToString()));

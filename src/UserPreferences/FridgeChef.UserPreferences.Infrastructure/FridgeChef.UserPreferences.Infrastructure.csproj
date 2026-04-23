@@ -3,6 +3,7 @@
     <RootNamespace>FridgeChef.UserPreferences.Infrastructure</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\FridgeChef.UserPreferences.Application\FridgeChef.UserPreferences.Application.csproj" />
     <ProjectReference Include="..\FridgeChef.UserPreferences.Domain\FridgeChef.UserPreferences.Domain.csproj" />
     <ProjectReference Include="..\..\Catalog\FridgeChef.Catalog.Application\FridgeChef.Catalog.Application.csproj" />
     <ProjectReference Include="..\..\Shared\FridgeChef.SharedKernel\FridgeChef.SharedKernel.csproj" />

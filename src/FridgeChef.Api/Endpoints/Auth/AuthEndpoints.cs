@@ -14,8 +14,7 @@ internal static class AuthEndpoints
             .WithTags("Auth")
             .RequireRateLimiting("AuthPerIp");
 
-        // ── POST /auth/register ─────────────────────────────────────────────────
-        group.MapPost("/register", async (
+        group.MapPost("/registration", async (
             HttpContext http,
             RegisterRequest request,
             IValidator<RegisterRequest> validator,
@@ -39,8 +38,7 @@ internal static class AuthEndpoints
         .WithSummary("Регистрация пользователя")
         .WithDescription("Создаёт новую учётную запись. После регистрации возвращается пара JWT-токенов.");
 
-        // ── POST /auth/login ────────────────────────────────────────────────────
-        group.MapPost("/login", async (
+        group.MapPost("/sessions", async (
             HttpContext http,
             LoginRequest request,
             IValidator<LoginRequest> validator,
@@ -63,8 +61,7 @@ internal static class AuthEndpoints
         .WithSummary("Вход в систему")
         .WithDescription("Аутентификация по e-mail и паролю. Возвращает пару JWT-токенов.");
 
-        // ── POST /auth/refresh ──────────────────────────────────────────────────
-        group.MapPost("/refresh", async (
+        group.MapPost("/tokens", async (
             HttpContext http,
             RefreshTokenRequest request,
             IValidator<RefreshTokenRequest> validator,
@@ -87,8 +84,7 @@ internal static class AuthEndpoints
         .WithSummary("Обновление токена")
         .WithDescription("Обменивает refresh-токен на новую пару токенов. Старый токен становится недействительным.");
 
-        // ── POST /auth/logout ───────────────────────────────────────────────────
-        group.MapPost("/logout", async (
+        group.MapDelete("/sessions", async (
             HttpContext http,
             [FromServices] LogoutHandler handler,
             CancellationToken ct) =>

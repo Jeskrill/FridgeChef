@@ -16,6 +16,32 @@ public sealed record AddExcludedFoodRequest(long FoodNodeId);
 public sealed record UpdateDietsRequest(long[] TaxonIds);
 public sealed record UpdateCuisinesRequest(long[] TaxonIds);
 
+public interface IUserPreferencesRepository
+{
+    Task<IReadOnlyList<AllergenResponse>> GetAllergensAsync(Guid userId, CancellationToken ct = default);
+    Task AddAllergenAsync(Guid userId, AddAllergenRequest request, CancellationToken ct = default);
+    Task RemoveAllergenAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<FavoriteFoodResponse>> GetFavoriteFoodsAsync(Guid userId, CancellationToken ct = default);
+    Task AddFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+    Task RemoveFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<ExcludedFoodResponse>> GetExcludedFoodsAsync(Guid userId, CancellationToken ct = default);
+    Task AddExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+    Task RemoveExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<UserDietResponse>> GetDefaultDietsAsync(Guid userId, CancellationToken ct = default);
+    Task ReplaceDefaultDietsAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default);
+
+    Task<IReadOnlyList<UserCuisineResponse>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct = default);
+    Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default);
+
+    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> GetFavoriteFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> GetDefaultDietTaxonIdsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> GetPreferredCuisineTaxonIdsAsync(Guid userId, CancellationToken ct = default);
+}
+
 public sealed class AddAllergenValidator : AbstractValidator<AddAllergenRequest>
 {
     public AddAllergenValidator()
@@ -57,18 +83,14 @@ public sealed class UpdateCuisinesValidator : AbstractValidator<UpdateCuisinesRe
 
 public sealed class GetAllergensHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<IReadOnlyList<AllergenResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
-    {
-        var list = await prefs.GetAllergensAsync(userId, ct);
-        return list.Select(a => new AllergenResponse(a.FoodNodeId, a.Severity.ToString())).ToList();
-    }
+    public Task<IReadOnlyList<AllergenResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+        => prefs.GetAllergensAsync(userId, ct);
 }
 public sealed class AddAllergenHandler(IUserPreferencesRepository prefs)
 {
     public async Task<Result> HandleAsync(Guid userId, AddAllergenRequest req, CancellationToken ct = default)
     {
-        await prefs.AddAllergenAsync(new UserAllergen(userId, req.FoodNodeId,
-            Enum.Parse<AllergenSeverity>(req.Severity, true), DateTime.UtcNow), ct);
+        await prefs.AddAllergenAsync(userId, req, ct);
         return Result.Success();
     }
 }
@@ -82,14 +104,14 @@ public sealed class RemoveAllergenHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetFavoriteFoodsHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<IReadOnlyList<FavoriteFoodResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
-        => (await prefs.GetFavoriteFoodsAsync(userId, ct)).Select(f => new FavoriteFoodResponse(f.FoodNodeId)).ToList();
+    public Task<IReadOnlyList<FavoriteFoodResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+        => prefs.GetFavoriteFoodsAsync(userId, ct);
 }
 public sealed class AddFavoriteFoodHandler(IUserPreferencesRepository prefs)
 {
     public async Task<Result> HandleAsync(Guid userId, AddFavoriteFoodRequest req, CancellationToken ct = default)
     {
-        await prefs.AddFavoriteFoodAsync(new UserFavoriteFood(userId, req.FoodNodeId, 1.0m, DateTime.UtcNow), ct);
+        await prefs.AddFavoriteFoodAsync(userId, req.FoodNodeId, ct);
         return Result.Success();
     }
 }
@@ -103,14 +125,14 @@ public sealed class RemoveFavoriteFoodHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetExcludedFoodsHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<IReadOnlyList<ExcludedFoodResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
-        => (await prefs.GetExcludedFoodsAsync(userId, ct)).Select(e => new ExcludedFoodResponse(e.FoodNodeId)).ToList();
+    public Task<IReadOnlyList<ExcludedFoodResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+        => prefs.GetExcludedFoodsAsync(userId, ct);
 }
 public sealed class AddExcludedFoodHandler(IUserPreferencesRepository prefs)
 {
     public async Task<Result> HandleAsync(Guid userId, AddExcludedFoodRequest req, CancellationToken ct = default)
     {
-        await prefs.AddExcludedFoodAsync(new UserExcludedFood(userId, req.FoodNodeId, DateTime.UtcNow), ct);
+        await prefs.AddExcludedFoodAsync(userId, req.FoodNodeId, ct);
         return Result.Success();
     }
 }
@@ -124,8 +146,8 @@ public sealed class RemoveExcludedFoodHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetDietsHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<IReadOnlyList<UserDietResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
-        => (await prefs.GetDefaultDietsAsync(userId, ct)).Select(d => new UserDietResponse(d.TaxonId)).ToList();
+    public Task<IReadOnlyList<UserDietResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+        => prefs.GetDefaultDietsAsync(userId, ct);
 }
 public sealed class UpdateDietsHandler(IUserPreferencesRepository prefs)
 {
@@ -137,8 +159,8 @@ public sealed class UpdateDietsHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetCuisinesHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<IReadOnlyList<UserCuisineResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
-        => (await prefs.GetPreferredCuisinesAsync(userId, ct)).Select(c => new UserCuisineResponse(c.TaxonId)).ToList();
+    public Task<IReadOnlyList<UserCuisineResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+        => prefs.GetPreferredCuisinesAsync(userId, ct);
 }
 public sealed class UpdateCuisinesHandler(IUserPreferencesRepository prefs)
 {

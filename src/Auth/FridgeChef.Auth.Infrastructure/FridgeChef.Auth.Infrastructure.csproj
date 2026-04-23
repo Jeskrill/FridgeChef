@@ -3,6 +3,7 @@
     <RootNamespace>FridgeChef.Auth.Infrastructure</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\FridgeChef.Auth.Application\FridgeChef.Auth.Application.csproj" />
     <ProjectReference Include="..\FridgeChef.Auth.Domain\FridgeChef.Auth.Domain.csproj" />
     <ProjectReference Include="..\..\Shared\FridgeChef.SharedKernel\FridgeChef.SharedKernel.csproj" />
   </ItemGroup>

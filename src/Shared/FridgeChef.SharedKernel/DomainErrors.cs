@@ -1,13 +1,12 @@
 namespace FridgeChef.SharedKernel;
 
-// Catalog of well-known domain errors, grouped by bounded context.
 public static class DomainErrors
 {
     public static class Auth
     {
         public static readonly DomainError EmailAlreadyTaken =
             new("AUTH_EMAIL_TAKEN", "Пользователь с таким email уже зарегистрирован");
-        // Псевдоним для единообразия с bounded context handlers
+
         public static readonly DomainError EmailAlreadyExists =
             new("AUTH_EMAIL_TAKEN", "Пользователь с таким email уже зарегистрирован");
         public static readonly DomainError InvalidCredentials =
@@ -32,6 +31,8 @@ public static class DomainErrors
             new("NOT_FOUND_PANTRY_ITEM", $"Продукт в холодильнике {id} не найден");
         public static DomainError FoodNode(long id) =>
             new("NOT_FOUND_FOOD_NODE", $"Продукт {id} не найден");
+        public static DomainError Taxon(long id) =>
+            new("NOT_FOUND_TAXON", $"Таксон {id} не найден");
     }
 
     public static class Pantry
@@ -45,4 +46,7 @@ public static class DomainErrors
         public static readonly DomainError AlreadyExists =
             new("FAVORITE_ALREADY_EXISTS", "Рецепт уже в избранном");
     }
+
+    public static DomainError Validation(string field, string message) =>
+        new($"VALIDATION_{field.ToUpperInvariant()}", message);
 }

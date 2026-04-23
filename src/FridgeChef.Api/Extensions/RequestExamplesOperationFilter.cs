@@ -4,8 +4,6 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace FridgeChef.Api.Extensions;
 
-// Добавляет реалистичные примеры в request body для ключевых эндпоинтов,
-// чтобы в Swagger UI поля имели значения по умолчанию.
 internal sealed class RequestExamplesOperationFilter : IOperationFilter
 {
     private static readonly Dictionary<string, OpenApiObject> Examples = new()

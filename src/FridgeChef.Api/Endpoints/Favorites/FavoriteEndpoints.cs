@@ -13,7 +13,6 @@ internal static class FavoriteEndpoints
             .WithTags("Favorites")
             .RequireAuthorization();
 
-        //  GET /favorites 
         group.MapGet("/", async (HttpContext http, [FromServices] GetFavoritesHandler handler, CancellationToken ct) =>
         {
             var result = await handler.HandleAsync(http.User.GetUserId(), ct);
@@ -29,8 +28,6 @@ internal static class FavoriteEndpoints
             **Требует JWT-авторизацию.**
             """);
 
-        //  PUT /favorites/{recipeId}
-        // PUT — idempotent upsert: клиент сам задаёт ключ ресурса (recipeId)
         group.MapPut("/{recipeId:guid}", async (
             Guid recipeId, HttpContext http,
             [FromServices] AddFavoriteHandler handler,
@@ -54,7 +51,6 @@ internal static class FavoriteEndpoints
             **Требует JWT-авторизацию.**
             """);
 
-        // ── DELETE /favorites/{recipeId} ────────────────────────────────────────
         group.MapDelete("/{recipeId:guid}", async (
             Guid recipeId, HttpContext http,
             [FromServices] RemoveFavoriteHandler handler,

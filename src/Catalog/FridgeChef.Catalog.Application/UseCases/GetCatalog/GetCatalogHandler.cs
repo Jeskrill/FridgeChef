@@ -1,6 +1,4 @@
-using FridgeChef.Catalog.Application.Converters;
 using FridgeChef.Catalog.Application.Dto;
-using FridgeChef.Catalog.Domain;
 using FridgeChef.SharedKernel;
 
 namespace FridgeChef.Catalog.Application.UseCases.GetCatalog;
@@ -21,15 +19,11 @@ public sealed class GetCatalogHandler
 
     public GetCatalogHandler(IRecipeRepository recipes) => _recipes = recipes;
 
-    public async Task<PagedResult<RecipeCardResponse>> HandleAsync(
+    public Task<PagedResult<RecipeCardResponse>> HandleAsync(
         GetCatalogRequest request, CancellationToken ct = default)
     {
         var paging = new PagedRequest(request.Page, request.PageSize);
-        var result = await _recipes.GetCatalogAsync(
+        return _recipes.GetCatalogAsync(
             request.Query, request.DietIds, request.CuisineIds, paging, ct);
-
-        var cards = result.Items.Select(r => r.ToCardDto()).ToList();
-        return new PagedResult<RecipeCardResponse>(
-            cards, result.TotalCount, result.Page, result.PageSize);
     }
 }

@@ -1,5 +1,4 @@
 using FridgeChef.Pricing.Application;
-using FridgeChef.Pricing.Domain;
 using FridgeChef.Pricing.Infrastructure.BackgroundJobs;
 using FridgeChef.Pricing.Infrastructure.Persistence;
 using FridgeChef.Pricing.Infrastructure.Scraping;
@@ -22,15 +21,14 @@ internal sealed class PricingRepository : IPricingRepository
     private readonly PricingDbContext _db;
     public PricingRepository(PricingDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<IngredientPrice>> GetPricesForFoodNodesAsync(
+    public async Task<IReadOnlyList<IngredientPriceResponse>> GetPricesForFoodNodesAsync(
         IEnumerable<long> foodNodeIds, CancellationToken ct = default)
     {
         var ids = foodNodeIds.ToList();
-        if (ids.Count == 0) return Array.Empty<IngredientPrice>();
+        if (ids.Count == 0) return Array.Empty<IngredientPriceResponse>();
 
-        // IngredientPrice is a sealed record used directly as query projection
         var result = await _db.Database
-            .SqlQueryRaw<IngredientPrice>(
+            .SqlQueryRaw<IngredientPriceResponse>(
                 """
                 SELECT DISTINCT ON (ipm.food_node_id)
                     ipm.food_node_id AS "FoodNodeId",
@@ -71,17 +69,14 @@ public static class PricingInfrastructureExtensions
         services.AddDbContext<PricingDbContext>(options =>
             options.UseNpgsql(connectionString));
 
-        // Read-side (existing)
         services.AddScoped<IPricingRepository, PricingRepository>();
 
-        // Write-side (scraping)
         services.AddScoped<IPriceSyncRepository, PriceSyncRepository>();
         services.AddScoped<PriceSyncService>();
         services.AddSingleton<PriceSyncRunner>();
         services.Configure<PriceSyncOptions>(
             configuration.GetSection(PriceSyncOptions.Section));
 
-        // Puppeteer sidecar scraper — singleton (reuses HttpClient)
         services.Configure<PuppeteerScraperOptions>(
             configuration.GetSection(PuppeteerScraperOptions.Section));
 
@@ -89,10 +84,8 @@ public static class PricingInfrastructureExtensions
         services.AddSingleton<IRetailerScraper>(sp =>
             sp.GetRequiredService<PuppeteerPyaterochkaScraper>());
 
-        // Keep legacy HttpPyaterochkaScraper available for fallback
         services.AddSingleton<HttpPyaterochkaScraper>();
 
-        // Daily background sync
         services.AddHostedService<PriceSyncBackgroundService>();
 
         return services;

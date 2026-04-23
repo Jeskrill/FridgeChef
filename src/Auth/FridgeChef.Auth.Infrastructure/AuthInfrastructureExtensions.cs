@@ -1,3 +1,4 @@
+using FridgeChef.Auth.Application.UseCases;
 using FridgeChef.Auth.Domain;
 using FridgeChef.Auth.Infrastructure.Persistence;
 using FridgeChef.Auth.Infrastructure.Security;

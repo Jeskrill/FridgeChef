@@ -28,11 +28,9 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Logging ──
 builder.Host.UseSerilog((ctx, cfg) =>
     cfg.ReadFrom.Configuration(ctx.Configuration));
 
-// ── Bounded Context Infrastructure ──
 builder.Services.AddAuthInfrastructure(builder.Configuration);
 builder.Services.AddCatalogInfrastructure(builder.Configuration);
 builder.Services.AddPantryInfrastructure(builder.Configuration);
@@ -41,7 +39,6 @@ builder.Services.AddUserPreferencesInfrastructure(builder.Configuration);
 builder.Services.AddOntologyInfrastructure(builder.Configuration);
 builder.Services.AddPricingInfrastructure(builder.Configuration);
 
-// ── Bounded Context Application ──
 builder.Services.AddAuthApplication();
 builder.Services.AddCatalogApplication();
 builder.Services.AddPantryApplication();
@@ -51,7 +48,6 @@ builder.Services.AddOntologyApplication();
 builder.Services.AddAdminApplication();
 builder.Services.AddCrossBcAdapters(); // кросс-BC адаптеры: Catalog→Favorites, Auth/Catalog/Favorites→Admin
 
-// ── Authentication ──
 var jwtSecret = builder.Configuration.GetRequiredJwtSecret();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -77,7 +73,6 @@ builder.Services.AddAuthorization(options =>
                 string.Equals(claim.Value, "admin", StringComparison.OrdinalIgnoreCase))));
 });
 
-// ── CORS ──
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
     ?? ["http://localhost:5500"];
 
@@ -135,7 +130,6 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// ── API ──
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -191,7 +185,6 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// ── Middleware Pipeline ──
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.UseResponseCompression();
@@ -201,7 +194,6 @@ app.UseAuthentication();
 app.UseRateLimiter();
 app.UseAuthorization();
 
-// ── Endpoints ──
 app.MapAllEndpoints();
 app.MapHealthChecks("/health");
 

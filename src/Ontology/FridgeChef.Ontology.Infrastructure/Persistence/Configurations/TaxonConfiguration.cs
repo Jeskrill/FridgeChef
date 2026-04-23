@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FridgeChef.Ontology.Infrastructure.Persistence.Configurations;
 
-// Taxonomy entities are stored in the same DB, configured in one place
 internal sealed class TaxonEntity
 {
     public long Id { get; set; }

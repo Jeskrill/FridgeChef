@@ -1,4 +1,4 @@
-using FridgeChef.Favorites.Domain;
+using FridgeChef.Favorites.Application.UseCases;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,29 +37,40 @@ internal sealed class FavoriteRecipeRepository : IFavoriteRecipeRepository
     private readonly FavoritesDbContext _db;
     public FavoriteRecipeRepository(FavoritesDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<FavoriteRecipe>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<FavoriteRecipeResponse>> GetByUserIdAsync(
+        Guid userId, IRecipeSummaryProvider recipes, CancellationToken ct = default)
     {
         var entities = await _db.FavoriteRecipes
             .Where(f => f.UserId == userId)
             .OrderByDescending(f => f.CreatedAt)
             .ToListAsync(ct);
-        return entities.Select(e => new FavoriteRecipe(e.UserId, e.RecipeId, e.CreatedAt)).ToList();
+
+        if (entities.Count == 0) return Array.Empty<FavoriteRecipeResponse>();
+
+        var summaries = await recipes.GetByIdsAsync(entities.Select(f => f.RecipeId), ct);
+        var byId = summaries.ToDictionary(r => r.Id);
+
+        return entities
+            .Where(f => byId.ContainsKey(f.RecipeId))
+            .Select(f => new FavoriteRecipeResponse(
+                f.RecipeId, byId[f.RecipeId].Slug,
+                byId[f.RecipeId].Title, byId[f.RecipeId].ImageUrl, f.CreatedAt))
+            .ToList();
     }
 
     public async Task<bool> ExistsAsync(Guid userId, Guid recipeId, CancellationToken ct = default) =>
         await _db.FavoriteRecipes.AnyAsync(f => f.UserId == userId && f.RecipeId == recipeId, ct);
 
-    public async Task AddAsync(FavoriteRecipe favorite, CancellationToken ct = default)
+    public async Task AddAsync(Guid userId, Guid recipeId, CancellationToken ct = default)
     {
         _db.FavoriteRecipes.Add(new FavoriteRecipeEntity
         {
-            UserId = favorite.UserId,
-            RecipeId = favorite.RecipeId,
-            CreatedAt = favorite.CreatedAt
+            UserId = userId,
+            RecipeId = recipeId,
+            CreatedAt = DateTime.UtcNow
         });
         await _db.SaveChangesAsync(ct);
     }
-
 
     public Task<int> CountTotalAsync(CancellationToken ct = default) =>
         _db.FavoriteRecipes.CountAsync(ct);
@@ -75,6 +86,7 @@ internal sealed class FavoriteRecipeRepository : IFavoriteRecipeRepository
             .ToListAsync(ct);
         return result.Select(x => (x.RecipeId, x.Count)).ToList();
     }
+
     public async Task RemoveAsync(Guid userId, Guid recipeId, CancellationToken ct = default) =>
         await _db.FavoriteRecipes
             .Where(f => f.UserId == userId && f.RecipeId == recipeId)

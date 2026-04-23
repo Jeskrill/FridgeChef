@@ -1,9 +1,8 @@
-using FridgeChef.Favorites.Domain;
+using FridgeChef.Catalog.Application.Dto;
 using FridgeChef.SharedKernel;
 
 namespace FridgeChef.Favorites.Application.UseCases;
 
-// Контракт для получения сводки рецепта из Catalog BC без прямой зависимости на Catalog.Domain.
 public sealed record RecipeSummaryDto(Guid Id, string Slug, string Title, string? ImageUrl);
 
 public interface IRecipeSummaryProvider
@@ -14,26 +13,23 @@ public interface IRecipeSummaryProvider
 public sealed record FavoriteRecipeResponse(
     Guid RecipeId, string Slug, string Title, string? ImageUrl, DateTime AddedAt);
 
+public interface IFavoriteRecipeRepository
+{
+    Task<IReadOnlyList<FavoriteRecipeResponse>> GetByUserIdAsync(Guid userId, IRecipeSummaryProvider recipes, CancellationToken ct = default);
+    Task<bool> ExistsAsync(Guid userId, Guid recipeId, CancellationToken ct = default);
+    Task AddAsync(Guid userId, Guid recipeId, CancellationToken ct = default);
+    Task RemoveAsync(Guid userId, Guid recipeId, CancellationToken ct = default);
+    Task<int> CountTotalAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<(Guid RecipeId, int Count)>> GetMostFavoritedAsync(int limit, CancellationToken ct = default);
+}
+
 public sealed class GetFavoritesHandler(
     IFavoriteRecipeRepository favorites,
     IRecipeSummaryProvider recipes)
 {
-    public async Task<IReadOnlyList<FavoriteRecipeResponse>> HandleAsync(
+    public Task<IReadOnlyList<FavoriteRecipeResponse>> HandleAsync(
         Guid userId, CancellationToken ct = default)
-    {
-        var favs = await favorites.GetByUserIdAsync(userId, ct);
-        if (favs.Count == 0) return Array.Empty<FavoriteRecipeResponse>();
-
-        var summaries = await recipes.GetByIdsAsync(favs.Select(f => f.RecipeId), ct);
-        var byId = summaries.ToDictionary(r => r.Id);
-
-        return favs
-            .Where(f => byId.ContainsKey(f.RecipeId))
-            .Select(f => new FavoriteRecipeResponse(
-                f.RecipeId, byId[f.RecipeId].Slug,
-                byId[f.RecipeId].Title, byId[f.RecipeId].ImageUrl, f.CreatedAt))
-            .ToList();
-    }
+        => favorites.GetByUserIdAsync(userId, recipes, ct);
 }
 
 public sealed class AddFavoriteHandler(IFavoriteRecipeRepository favorites)
@@ -43,7 +39,7 @@ public sealed class AddFavoriteHandler(IFavoriteRecipeRepository favorites)
         if (await favorites.ExistsAsync(userId, recipeId, ct))
             return Result.Success();
 
-        await favorites.AddAsync(new FavoriteRecipe(userId, recipeId, DateTime.UtcNow), ct);
+        await favorites.AddAsync(userId, recipeId, ct);
         return Result.Success();
     }
 }

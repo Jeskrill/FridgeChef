@@ -1,5 +1,5 @@
 using FridgeChef.Catalog.Application.UseCases.MatchFromPantry;
-using FridgeChef.Pantry.Domain;
+using FridgeChef.Pantry.Application.UseCases;
 using FridgeChef.Pantry.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,7 +21,6 @@ public static class PantryInfrastructureExtensions
 
         services.AddScoped<IPantryRepository, PantryRepository>();
 
-        // Cross-BC supplier for MatchFromPantry use case
         services.AddScoped<IPantrySupplier, PantrySupplierAdapter>();
 
         return services;

@@ -1,4 +1,3 @@
-using FridgeChef.Auth.Domain;
 using FridgeChef.SharedKernel;
 
 namespace FridgeChef.Auth.Application.UseCases;

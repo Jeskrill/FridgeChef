@@ -15,12 +15,6 @@ public enum MediaKind
     Video = 3
 }
 
-// ────────────────────────────────────────────────────────────────────
-//  Aggregate Root
-// ────────────────────────────────────────────────────────────────────
-
-// Recipe aggregate root — immutable domain representation.
-// Does NOT reference EF Core or any persistence concern.
 public sealed record Recipe(
     Guid Id,
     long SourceRecipeId,
@@ -44,10 +38,6 @@ public sealed record Recipe(
     IReadOnlyList<RecipeEquipment> Equipment,
     IReadOnlyList<RecipeTaxon> RecipeTaxons,
     IReadOnlyList<RecipeAllergen> Allergens);
-
-// ────────────────────────────────────────────────────────────────────
-//  Value Objects / Child entities (owned by Recipe aggregate)
-// ────────────────────────────────────────────────────────────────────
 
 public sealed record RecipeIngredient(
     long Id,

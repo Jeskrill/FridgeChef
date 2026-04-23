@@ -7,7 +7,6 @@ namespace FridgeChef.Auth.Application.UseCases;
 
 public sealed record RefreshTokenRequest(string RefreshToken);
 
-// Валидация запроса на обновление токена.
 public sealed class RefreshTokenValidator : AbstractValidator<RefreshTokenRequest>
 {
     public RefreshTokenValidator()

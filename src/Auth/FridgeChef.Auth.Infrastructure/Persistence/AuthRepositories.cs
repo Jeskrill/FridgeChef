@@ -1,3 +1,4 @@
+using FridgeChef.Auth.Application.UseCases;
 using FridgeChef.Auth.Domain;
 using FridgeChef.Auth.Infrastructure.Persistence.Converters;
 using FridgeChef.Auth.Infrastructure.Persistence.Entities;
@@ -9,6 +10,16 @@ internal sealed class UserRepository : IUserRepository
 {
     private readonly AuthDbContext _db;
     public UserRepository(AuthDbContext db) => _db = db;
+
+    public async Task<UserProfileResponse?> GetProfileByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var entity = await _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+        if (entity is null) return null;
+
+        return new UserProfileResponse(
+            entity.Id, entity.DisplayName, entity.Email,
+            entity.AvatarUrl, entity.Role, entity.CreatedAt);
+    }
 
     public async Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {

@@ -18,7 +18,6 @@ internal static class RecipeEndpoints
     {
         var group = app.MapGroup("/recipes").WithTags("Recipes");
 
-        // ── GET /recipes ─────────────────────────────────────────────────────────
         group.MapGet("/", async (
             [FromServices] GetCatalogHandler handler,
             [FromQuery(Name = "q")] string? q,
@@ -73,7 +72,6 @@ internal static class RecipeEndpoints
             Список ID диет и кухонь: `GET /taxons`
             """);
 
-        // ── GET /recipes/{slug} ──────────────────────────────────────────────────
         group.MapGet("/{slug}", async (
             string slug,
             [FromServices] GetRecipeDetailHandler handler,
@@ -91,8 +89,7 @@ internal static class RecipeEndpoints
             `slug` — URL-идентификатор рецепта из поля `slug` в каталоге. Например: `borscht-classic`.
             """);
 
-        // ── POST /recipes/search ─────────────────────────────────────────────────
-        group.MapPost("/search", async (
+        group.MapPost("/matches", async (
             HttpContext http,
             [FromBody] MatchRequest request,
             IValidator<MatchRequest> validator,

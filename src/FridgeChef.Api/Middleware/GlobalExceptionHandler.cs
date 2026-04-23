@@ -6,7 +6,6 @@ using Npgsql;
 
 namespace FridgeChef.Api.Middleware;
 
-// Global exception handler returning ProblemDetails (RFC 7807).
 internal sealed class GlobalExceptionHandler : IExceptionHandler
 {
     private readonly ILogger<GlobalExceptionHandler> _logger;
@@ -79,7 +78,6 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
     }
 }
 
-// Extension methods for mapping Result to HTTP responses.
 internal static class ResultExtensions
 {
     public static IResult ToHttpResult<T>(this Result<T> result, int successStatus = StatusCodes.Status200OK) =>

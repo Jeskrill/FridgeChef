@@ -12,7 +12,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
     public async Task<long> EnsureRetailerAsync(
         string code, string name, string baseUrl, CancellationToken ct = default)
     {
-        // RETURNING is non-composable in EF8 — use ToListAsync
+
         var ids = await _db.Database
             .SqlQueryRaw<long>(
                 """
@@ -121,5 +121,40 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
                 ORDER BY id
                 """)
             .ToListAsync(ct);
+    }
+
+    public async Task<PricingStatsResponse> GetStatsAsync(CancellationToken ct = default)
+    {
+
+        var updatedCount = await _db.Database
+            .SqlQueryRaw<int>(
+                """
+                SELECT COUNT(DISTINCT ipm.food_node_id)::int AS "Value"
+                FROM pricing.ingredient_product_matches ipm
+                JOIN pricing.price_snapshots ps ON ps.retailer_product_id = ipm.retailer_product_id
+                WHERE ipm.is_primary = true
+                """)
+            .FirstOrDefaultAsync(ct);
+
+        var totalActive = await _db.Database
+            .SqlQueryRaw<int>(
+                """
+                SELECT COUNT(*)::int AS "Value"
+                FROM ontology.food_nodes
+                WHERE node_kind = 'ingredient' AND status = 'active'
+                """)
+            .FirstOrDefaultAsync(ct);
+
+        var missingCount = totalActive - updatedCount;
+
+        var lastSync = await _db.Database
+            .SqlQueryRaw<DateTime?>(
+                """
+                SELECT MAX(ps.captured_at) AS "Value"
+                FROM pricing.price_snapshots ps
+                """)
+            .FirstOrDefaultAsync(ct);
+
+        return new PricingStatsResponse(updatedCount, Math.Max(0, missingCount), lastSync);
     }
 }

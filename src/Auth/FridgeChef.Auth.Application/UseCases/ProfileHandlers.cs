@@ -11,6 +11,27 @@ public sealed record UserProfileResponse(
 public sealed record UpdateProfileRequest(string? DisplayName, string? Email);
 public sealed record ChangePasswordRequest(string OldPassword, string NewPassword);
 
+public interface IUserRepository
+{
+
+    Task<UserProfileResponse?> GetProfileByIdAsync(Guid id, CancellationToken ct = default);
+
+    Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
+    Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
+    Task AddAsync(User user, CancellationToken ct = default);
+    Task UpdateAsync(User user, CancellationToken ct = default);
+}
+
+public interface IRefreshTokenRepository
+{
+    Task<RefreshToken?> GetByTokenHashAsync(string tokenHash, CancellationToken ct = default);
+    Task AddAsync(RefreshToken token, CancellationToken ct = default);
+    Task RevokeAsync(Guid tokenId, CancellationToken ct = default);
+    Task RevokeAllForUserAsync(Guid userId, CancellationToken ct = default);
+}
+
 public sealed class UpdateProfileValidator : AbstractValidator<UpdateProfileRequest>
 {
     public UpdateProfileValidator()
@@ -37,9 +58,9 @@ public sealed class GetProfileHandler(IUserRepository users)
 {
     public async Task<Result<UserProfileResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
     {
-        var user = await users.GetByIdAsync(userId, ct);
-        if (user is null) return DomainErrors.NotFound.User(userId);
-        return new UserProfileResponse(user.Id, user.DisplayName, user.Email, user.AvatarUrl, user.Role, user.CreatedAt);
+        var profile = await users.GetProfileByIdAsync(userId, ct);
+        if (profile is null) return DomainErrors.NotFound.User(userId);
+        return profile;
     }
 }
 
@@ -60,6 +81,7 @@ public sealed class UpdateProfileHandler(IUserRepository users)
             UpdatedAt = DateTime.UtcNow
         };
         await users.UpdateAsync(updated, ct);
+
         return new UserProfileResponse(updated.Id, updated.DisplayName, updated.Email, updated.AvatarUrl, updated.Role, updated.CreatedAt);
     }
 }

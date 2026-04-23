@@ -1,4 +1,5 @@
 using FridgeChef.Catalog.Application.UseCases.MatchFromPantry;
+using FridgeChef.Pantry.Application.UseCases;
 using FridgeChef.Pantry.Domain;
 using FridgeChef.Pantry.Infrastructure.Persistence.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -42,34 +43,53 @@ internal sealed class PantryRepository : IPantryRepository
     private readonly PantryDbContext _db;
     public PantryRepository(PantryDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<PantryItem>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PantryItemResponse>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
         var entities = await _db.PantryItems
             .Where(p => p.UserId == userId)
             .OrderBy(p => p.CreatedAt)
             .ToListAsync(ct);
-        return entities.Select(ToDomain).ToList();
+        return entities.Select(ToDto).ToList();
     }
 
-    public async Task<PantryItem?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<PantryItemResponse?> GetByIdAsync(Guid id, CancellationToken ct = default)
     {
         var e = await _db.PantryItems.FirstOrDefaultAsync(p => p.Id == id, ct);
-        return e is null ? null : ToDomain(e);
+        return e is null ? null : ToDto(e);
     }
 
     public async Task<bool> ExistsAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
         await _db.PantryItems.AnyAsync(p => p.UserId == userId && p.FoodNodeId == foodNodeId, ct);
 
-    public async Task AddAsync(PantryItem item, CancellationToken ct = default)
+    public async Task<PantryItemResponse> AddAsync(Guid userId, AddPantryItemRequest request, CancellationToken ct = default)
     {
-        _db.PantryItems.Add(ToEntity(item));
+        var now = DateTime.UtcNow;
+        var entity = new PantryItemEntity
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            FoodNodeId = request.FoodNodeId,
+            QuantityValue = request.Quantity,
+            UnitId = request.UnitId,
+            QuantityMode = request.UnitId.HasValue ? "exact" : "unknown",
+            Source = "manual",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        _db.PantryItems.Add(entity);
         await _db.SaveChangesAsync(ct);
+        return ToDto(entity);
     }
 
-    public async Task UpdateAsync(PantryItem item, CancellationToken ct = default)
+    public async Task<PantryItemResponse> UpdateAsync(Guid id, UpdatePantryItemRequest request, CancellationToken ct = default)
     {
-        _db.PantryItems.Update(ToEntity(item));
+        var entity = await _db.PantryItems.FirstAsync(p => p.Id == id, ct);
+        if (request.Quantity.HasValue) entity.QuantityValue = request.Quantity;
+        if (request.UnitId.HasValue) entity.UnitId = request.UnitId;
+        entity.UpdatedAt = DateTime.UtcNow;
+        _db.PantryItems.Update(entity);
         await _db.SaveChangesAsync(ct);
+        return ToDto(entity);
     }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default) =>
@@ -84,42 +104,15 @@ internal sealed class PantryRepository : IPantryRepository
         return ids.ToHashSet();
     }
 
-    private static PantryItem ToDomain(PantryItemEntity e) => new(
+    private static PantryItemResponse ToDto(PantryItemEntity e) => new(
         Id: e.Id,
-        UserId: e.UserId,
         FoodNodeId: e.FoodNodeId,
-        QuantityValue: e.QuantityValue,
+        Quantity: e.QuantityValue,
         UnitId: e.UnitId,
-        QuantityMode: Enum.TryParse<Domain.QuantityMode>(e.QuantityMode, ignoreCase: true, out var qm)
-            ? qm
-            : Domain.QuantityMode.Unknown,
-        NormalizedAmountG: e.NormalizedAmountG,
-        NormalizedAmountMl: e.NormalizedAmountMl,
-        Source: e.Source,
-        Note: e.Note,
-        ExpiresAt: e.ExpiresAt,
-        CreatedAt: e.CreatedAt,
-        UpdatedAt: e.UpdatedAt);
-
-    private static PantryItemEntity ToEntity(PantryItem p) => new()
-    {
-        Id = p.Id,
-        UserId = p.UserId,
-        FoodNodeId = p.FoodNodeId,
-        QuantityValue = p.QuantityValue,
-        UnitId = p.UnitId,
-        QuantityMode = p.QuantityMode.ToString().ToLowerInvariant(),
-        NormalizedAmountG = p.NormalizedAmountG,
-        NormalizedAmountMl = p.NormalizedAmountMl,
-        Source = p.Source,
-        Note = p.Note,
-        ExpiresAt = p.ExpiresAt,
-        CreatedAt = p.CreatedAt,
-        UpdatedAt = p.UpdatedAt
-    };
+        QuantityMode: e.QuantityMode ?? "unknown",
+        CreatedAt: e.CreatedAt);
 }
 
-// Adapter: wraps PantryRepository to satisfy IPantrySupplier for MatchFromPantry use case.
 internal sealed class PantrySupplierAdapter : IPantrySupplier
 {
     private readonly IPantryRepository _pantry;

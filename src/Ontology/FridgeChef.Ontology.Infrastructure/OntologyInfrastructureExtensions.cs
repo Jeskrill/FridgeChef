@@ -1,8 +1,8 @@
+using FridgeChef.Admin.Application.UseCases;
 using FridgeChef.Catalog.Application.UseCases.MatchFromPantry;
+using FridgeChef.Ontology.Application.UseCases;
 using FridgeChef.Ontology.Domain;
 using FridgeChef.Ontology.Infrastructure.Persistence;
-using FridgeChef.Pantry.Domain;
-using FridgeChef.Taxonomy.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,15 +26,17 @@ public static class OntologyInfrastructureExtensions
         services.AddScoped<IFoodHierarchyRepository, FoodHierarchyRepository>();
         services.AddScoped<ITaxonRepository, TaxonRepository>();
 
-        // Register cross-BC supplier adapters for MatchFromPantry use case
         services.AddScoped<IFoodHierarchySupplier, FoodHierarchySupplierAdapter>();
+
+        services.AddScoped<IAdminIngredientReader, AdminIngredientAdapter>();
+        services.AddScoped<IAdminIngredientWriter, AdminIngredientAdapter>();
+        services.AddScoped<IAdminTaxonReader, AdminTaxonAdapter>();
+        services.AddScoped<IAdminTaxonWriter, AdminTaxonAdapter>();
 
         return services;
     }
 }
 
-// Adapter: wraps IFoodHierarchyRepository to satisfy IFoodHierarchySupplier (from Catalog.Application).
-// Keeps BC coupling at the DI registration level, not at the interface level.
 internal sealed class FoodHierarchySupplierAdapter : IFoodHierarchySupplier
 {
     private readonly IFoodHierarchyRepository _hierarchy;

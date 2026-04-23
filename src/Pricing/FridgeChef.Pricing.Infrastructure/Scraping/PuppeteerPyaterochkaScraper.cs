@@ -8,30 +8,19 @@ using Microsoft.Extensions.Options;
 
 namespace FridgeChef.Pricing.Infrastructure.Scraping;
 
-// Configuration for the Puppeteer sidecar scraper.
 public sealed class PuppeteerScraperOptions
 {
     public const string Section = "Pricing:PuppeteerScraper";
 
-    // Base URL of the Node.js Puppeteer sidecar server.
     public string BaseUrl { get; set; } = "http://localhost:3333";
 
-    // Max queries per batch request to the sidecar.
     public int BatchSize { get; set; } = 20;
 
-    // HTTP timeout for a single search request (seconds).
     public int SingleTimeoutSeconds { get; set; } = 45;
 
-    // HTTP timeout for a batch request (seconds).
     public int BatchTimeoutSeconds { get; set; } = 600;
 }
 
-// Scrapes 5ka.ru via a Puppeteer+Stealth Node.js sidecar server.
-// Architecture:
-// .NET ─HTTP→ Node.js (localhost:3333) ─Puppeteer→ 5ka.ru
-// The Node.js server maintains a warm Chromium browser session
-// with stealth plugin that auto-solves ServicePipe WAF challenges.
-// No manual cookie management needed.
 public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDisposable
 {
     private readonly HttpClient _http;
@@ -59,7 +48,6 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         };
     }
 
-    // Searches for a single ingredient query via the Puppeteer sidecar.
     public async Task<IReadOnlyList<ScrapedProduct>> SearchAsync(
         string query, CancellationToken ct = default)
     {
@@ -111,8 +99,6 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         }
     }
 
-    // Sends a batch of queries to the Puppeteer sidecar.
-    // Returns a dictionary: query → products.
     public async Task<Dictionary<string, IReadOnlyList<ScrapedProduct>>> SearchBatchAsync(
         IReadOnlyList<string> queries, CancellationToken ct = default)
     {
@@ -175,7 +161,6 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         return results;
     }
 
-    // Checks if the Puppeteer sidecar is running and the browser is ready.
     public async Task<(bool ready, string? error)> CheckHealthAsync(
         CancellationToken ct = default)
     {
@@ -196,7 +181,6 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         }
     }
 
-    // Requests the sidecar to restart its browser instance.
     public async Task RestartBrowserAsync(CancellationToken ct = default)
     {
         try
@@ -210,8 +194,6 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         }
     }
 
-    // Sets cookies on the Puppeteer sidecar browser from a real browser session.
-    // Format: "name1=value1; name2=value2; ..."
     public async Task<bool> SetCookiesAsync(string cookieString, CancellationToken ct = default)
     {
         try
@@ -255,8 +237,6 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
     }
 
     public void Dispose() => _http.Dispose();
-
-    // ─── DTOs for JSON deserialization ──────────────────────────────────
 
     private sealed record ScrapeResult(
         string? Query,

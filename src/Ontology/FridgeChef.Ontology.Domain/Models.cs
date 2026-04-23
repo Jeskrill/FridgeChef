@@ -26,10 +26,6 @@ public enum AliasType
     Abbreviation = 5
 }
 
-// ────────────────────────────────────────────────────────────────────
-//  Domain records — immutable, no EF dependencies
-// ────────────────────────────────────────────────────────────────────
-
 public sealed record FoodNode(
     long Id,
     string CanonicalName,
@@ -60,27 +56,6 @@ public sealed record Unit(
     string Symbol,
     string QuantityClass,
     decimal ToBaseMultiplier);
-
-public sealed record FoodNodeSearchResult(
-    long Id,
-    string CanonicalName,
-    string? AliasText,
-    double Similarity);
-
-// ────────────────────────────────────────────────────────────────────
-//  Repository interfaces — defined in Domain, implemented in Infrastructure
-// ────────────────────────────────────────────────────────────────────
-
-public interface IFoodNodeRepository
-{
-    Task<IReadOnlyList<FoodNodeSearchResult>> SearchAsync(string query, int limit = 10, CancellationToken ct = default);
-    Task<FoodNode?> GetByIdAsync(long id, CancellationToken ct = default);
-}
-
-public interface IUnitRepository
-{
-    Task<IReadOnlyList<Unit>> GetAllAsync(CancellationToken ct = default);
-}
 
 public interface IFoodHierarchyRepository
 {

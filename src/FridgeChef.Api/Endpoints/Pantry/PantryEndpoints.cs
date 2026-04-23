@@ -13,7 +13,6 @@ internal static class PantryEndpoints
             .WithTags("Pantry")
             .RequireAuthorization();
 
-        // ── GET /pantry ─────────────────────────────────────────────────────────
         group.MapGet("/", async (HttpContext http, [FromServices] GetPantryItemsHandler handler, CancellationToken ct) =>
         {
             var result = await handler.HandleAsync(http.User.GetUserId(), ct);
@@ -34,7 +33,6 @@ internal static class PantryEndpoints
             Требуется JWT-авторизация.
             """);
 
-        // ── POST /pantry ────────────────────────────────────────────────────────
         group.MapPost("/", async (
             HttpContext http,
             AddPantryItemRequest request,
@@ -64,7 +62,6 @@ internal static class PantryEndpoints
             Требуется JWT-авторизация.
             """);
 
-        // ── PATCH /pantry/{id} ──────────────────────────────────────────────────
         group.MapPatch("/{id:guid}", async (
             Guid id, HttpContext http,
             UpdatePantryItemRequest request,
@@ -89,7 +86,6 @@ internal static class PantryEndpoints
             Требуется JWT-авторизация.
             """);
 
-        // ── DELETE /pantry/{id} ─────────────────────────────────────────────────
         group.MapDelete("/{id:guid}", async (
             Guid id, HttpContext http,
             [FromServices] RemovePantryItemHandler handler,

@@ -3,8 +3,6 @@ using FridgeChef.Catalog.Infrastructure.Persistence.Entities;
 
 namespace FridgeChef.Catalog.Infrastructure.Persistence.Converters;
 
-// Converts internal EF Core entities to pure Domain records.
-// This layer is the only place that knows about both Entity and Domain shapes.
 internal static class RecipeEntityConverter
 {
     internal static Recipe ToDomain(this RecipeEntity e) => new(
