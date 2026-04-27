@@ -3,9 +3,9 @@
     <RootNamespace>FridgeChef.Admin.Application</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../FridgeChef.Admin.Domain/FridgeChef.Admin.Domain.csproj" />
     <ProjectReference Include="../../Auth/FridgeChef.Auth.Application/FridgeChef.Auth.Application.csproj" />
     <ProjectReference Include="../../Catalog/FridgeChef.Catalog.Application/FridgeChef.Catalog.Application.csproj" />
-    <ProjectReference Include="../../Favorites/FridgeChef.Favorites.Domain/FridgeChef.Favorites.Domain.csproj" />
     <ProjectReference Include="../../Shared/FridgeChef.SharedKernel/FridgeChef.SharedKernel.csproj" />
   </ItemGroup>
   <ItemGroup>

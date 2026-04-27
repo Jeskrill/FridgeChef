@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Threading.RateLimiting;
 using System.Text;
+using System.Threading.RateLimiting;
+using FridgeChef.Admin.Application.DependencyInjection;
+using FridgeChef.Admin.Infrastructure;
 using FridgeChef.Api.CrossBc;
 using FridgeChef.Api.Extensions;
 using FridgeChef.Api.Middleware;
@@ -10,16 +12,15 @@ using FridgeChef.Auth.Infrastructure;
 using FridgeChef.Auth.Infrastructure.Security;
 using FridgeChef.Catalog.Application;
 using FridgeChef.Catalog.Infrastructure;
-using FridgeChef.Pantry.Application.DependencyInjection;
-using FridgeChef.Pantry.Infrastructure;
 using FridgeChef.Favorites.Application.DependencyInjection;
 using FridgeChef.Favorites.Infrastructure;
-using FridgeChef.UserPreferences.Application.DependencyInjection;
-using FridgeChef.UserPreferences.Infrastructure;
 using FridgeChef.Ontology.Application.DependencyInjection;
 using FridgeChef.Ontology.Infrastructure;
-using FridgeChef.Admin.Application.DependencyInjection;
+using FridgeChef.Pantry.Application.DependencyInjection;
+using FridgeChef.Pantry.Infrastructure;
 using FridgeChef.Pricing.Infrastructure;
+using FridgeChef.UserPreferences.Application.DependencyInjection;
+using FridgeChef.UserPreferences.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -46,7 +47,8 @@ builder.Services.AddFavoritesApplication();
 builder.Services.AddUserPreferencesApplication();
 builder.Services.AddOntologyApplication();
 builder.Services.AddAdminApplication();
-builder.Services.AddCrossBcAdapters(); // кросс-BC адаптеры: Catalog→Favorites, Auth/Catalog/Favorites→Admin
+builder.Services.AddAdminInfrastructure();
+builder.Services.AddCrossBcAdapters();
 
 var jwtSecret = builder.Configuration.GetRequiredJwtSecret();
 
@@ -160,7 +162,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Вставьте access-токен из /auth/login"
+        Description = "Вставьте access-токен из /auth/sessions"
     });
 
     options.AddSecurityRequirement(new()
@@ -210,3 +212,5 @@ if (app.Environment.IsDevelopment())
 
 Log.Information("FridgeChef API starting on {Urls}", string.Join(", ", app.Urls));
 app.Run();
+
+public partial class Program;

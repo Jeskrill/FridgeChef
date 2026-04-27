@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>FridgeChef.Admin.Infrastructure</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FridgeChef.Admin.Domain\FridgeChef.Admin.Domain.csproj" />
+    <ProjectReference Include="..\FridgeChef.Admin.Application\FridgeChef.Admin.Application.csproj" />
+    <ProjectReference Include="..\..\Auth\FridgeChef.Auth.Application\FridgeChef.Auth.Application.csproj" />
+    <ProjectReference Include="..\..\Catalog\FridgeChef.Catalog.Infrastructure\FridgeChef.Catalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Ontology\FridgeChef.Ontology.Infrastructure\FridgeChef.Ontology.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Favorites\FridgeChef.Favorites.Application\FridgeChef.Favorites.Application.csproj" />
+    <ProjectReference Include="..\..\Shared\FridgeChef.SharedKernel\FridgeChef.SharedKernel.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+</Project>

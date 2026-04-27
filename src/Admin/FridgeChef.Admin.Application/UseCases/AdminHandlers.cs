@@ -39,73 +39,66 @@ public sealed record AdminPopularRecipeResponse(
 
 public interface IAdminUserReader
 {
-    Task<IReadOnlyList<AdminUserResponse>> GetAllAsync(string? query, CancellationToken ct = default);
-    Task<int> CountAsync(CancellationToken ct = default);
+    Task<AdminUserListResponse> GetPagedAsync(string? query, int page, int pageSize, CancellationToken ct);
+    Task<int> CountAsync(CancellationToken ct);
 }
 
 public interface IAdminRecipeReader
 {
-    Task<int> CountAsync(CancellationToken ct = default);
-    Task<AdminPopularRecipeResponse?> GetSummaryByIdAsync(Guid id, CancellationToken ct = default);
-    Task<AdminRecipeListResponse> GetPagedAsync(string? query, int page, int pageSize, CancellationToken ct = default);
+    Task<int> CountAsync(CancellationToken ct);
+    Task<AdminPopularRecipeResponse?> GetSummaryByIdAsync(Guid id, CancellationToken ct);
+    Task<AdminRecipeListResponse> GetPagedAsync(string? query, int page, int pageSize, CancellationToken ct);
 }
 
 public interface IAdminRecipeWriter
 {
-    Task<bool> UpdateStatusAsync(Guid id, string status, CancellationToken ct = default);
-    Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
+    Task<bool> UpdateStatusAsync(Guid id, string status, CancellationToken ct);
+    Task<bool> DeleteAsync(Guid id, CancellationToken ct);
 }
 
 public interface IAdminIngredientReader
 {
-    Task<AdminIngredientListResponse> GetPagedAsync(string? query, int page, int pageSize, CancellationToken ct = default);
-    Task<AdminIngredientResponse?> GetByIdAsync(long id, CancellationToken ct = default);
+    Task<AdminIngredientListResponse> GetPagedAsync(string? query, int page, int pageSize, CancellationToken ct);
+    Task<AdminIngredientResponse?> GetByIdAsync(long id, CancellationToken ct);
 }
 
 public interface IAdminIngredientWriter
 {
-    Task<AdminIngredientResponse> CreateAsync(CreateIngredientRequest req, CancellationToken ct = default);
-    Task<AdminIngredientResponse?> UpdateAsync(long id, UpdateIngredientRequest req, CancellationToken ct = default);
-    Task<bool> DeleteAsync(long id, CancellationToken ct = default);
+    Task<AdminIngredientResponse> CreateAsync(CreateIngredientRequest req, CancellationToken ct);
+    Task<AdminIngredientResponse?> UpdateAsync(long id, UpdateIngredientRequest req, CancellationToken ct);
+    Task<bool> DeleteAsync(long id, CancellationToken ct);
 }
 
 public interface IAdminTaxonReader
 {
-    Task<AdminTaxonListResponse> GetAllAsync(string? kind, CancellationToken ct = default);
-    Task<AdminTaxonResponse?> GetByIdAsync(long id, CancellationToken ct = default);
+    Task<AdminTaxonListResponse> GetAllAsync(string? kind, CancellationToken ct);
+    Task<AdminTaxonResponse?> GetByIdAsync(long id, CancellationToken ct);
 }
 
 public interface IAdminTaxonWriter
 {
-    Task<AdminTaxonResponse> CreateAsync(CreateTaxonRequest req, CancellationToken ct = default);
-    Task<AdminTaxonResponse?> UpdateAsync(long id, UpdateTaxonRequest req, CancellationToken ct = default);
-    Task<bool> DeleteAsync(long id, CancellationToken ct = default);
+    Task<AdminTaxonResponse> CreateAsync(CreateTaxonRequest req, CancellationToken ct);
+    Task<AdminTaxonResponse?> UpdateAsync(long id, UpdateTaxonRequest req, CancellationToken ct);
+    Task<bool> DeleteAsync(long id, CancellationToken ct);
 }
 
 public interface IAdminFavoritesReader
 {
-    Task<int> CountTotalAsync(CancellationToken ct = default);
-    Task<IReadOnlyList<(Guid RecipeId, int Count)>> GetMostFavoritedAsync(int limit, CancellationToken ct = default);
+    Task<int> CountTotalAsync(CancellationToken ct);
+    Task<IReadOnlyList<(Guid RecipeId, int Count)>> GetMostFavoritedAsync(int limit, CancellationToken ct);
 }
 
 public sealed class GetAdminUsersHandler(IAdminUserReader users)
 {
-    public async Task<AdminUserListResponse> HandleAsync(
-        string? query, int page, int pageSize, CancellationToken ct = default)
-    {
-        var allUsers = await users.GetAllAsync(query, ct);
-        var total    = allUsers.Count;
-        var paged    = allUsers
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .ToList();
-        return new AdminUserListResponse(paged, total, page, pageSize);
-    }
+    public Task<AdminUserListResponse> HandleAsync(
+        string? query, int page, int pageSize, CancellationToken ct)
+        => users.GetPagedAsync(query, page, pageSize, ct);
 }
 
 public sealed class SetUserBlockedHandler(IUserRepository users)
 {
     public async Task<Result<AdminUserResponse>> HandleAsync(
-        Guid userId, SetUserBlockedRequest request, CancellationToken ct = default)
+        Guid userId, SetUserBlockedRequest request, CancellationToken ct)
     {
         var user = await users.GetByIdAsync(userId, ct);
         if (user is null) return DomainErrors.NotFound.User(userId);
@@ -119,7 +112,7 @@ public sealed class SetUserBlockedHandler(IUserRepository users)
 public sealed class GetAdminRecipesHandler(IAdminRecipeReader recipes)
 {
     public Task<AdminRecipeListResponse> HandleAsync(
-        string? query, int page, int pageSize, CancellationToken ct = default)
+        string? query, int page, int pageSize, CancellationToken ct)
         => recipes.GetPagedAsync(query, page, pageSize, ct);
 }
 
@@ -128,7 +121,7 @@ public sealed class UpdateRecipeStatusHandler(IAdminRecipeWriter recipes)
     private static readonly HashSet<string> ValidStatuses = ["published", "draft", "archived"];
 
     public async Task<Result> HandleAsync(
-        Guid id, SetRecipeStatusRequest request, CancellationToken ct = default)
+        Guid id, SetRecipeStatusRequest request, CancellationToken ct)
     {
         var status = request.Status.Trim().ToLowerInvariant();
         if (!ValidStatuses.Contains(status))
@@ -142,7 +135,7 @@ public sealed class UpdateRecipeStatusHandler(IAdminRecipeWriter recipes)
 
 public sealed class DeleteRecipeHandler(IAdminRecipeWriter recipes)
 {
-    public async Task<Result> HandleAsync(Guid id, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid id, CancellationToken ct)
     {
         var success = await recipes.DeleteAsync(id, ct);
         if (!success) return DomainErrors.NotFound.Recipe(id);
@@ -153,14 +146,14 @@ public sealed class DeleteRecipeHandler(IAdminRecipeWriter recipes)
 public sealed class GetAdminIngredientsHandler(IAdminIngredientReader ingredients)
 {
     public Task<AdminIngredientListResponse> HandleAsync(
-        string? query, int page, int pageSize, CancellationToken ct = default)
+        string? query, int page, int pageSize, CancellationToken ct)
         => ingredients.GetPagedAsync(query, page, pageSize, ct);
 }
 
 public sealed class CreateIngredientHandler(IAdminIngredientWriter ingredients)
 {
     public async Task<Result<AdminIngredientResponse>> HandleAsync(
-        CreateIngredientRequest req, CancellationToken ct = default)
+        CreateIngredientRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.CanonicalName))
             return DomainErrors.Validation("CanonicalName", "Название обязательно");
@@ -173,7 +166,7 @@ public sealed class CreateIngredientHandler(IAdminIngredientWriter ingredients)
 public sealed class UpdateIngredientHandler(IAdminIngredientWriter ingredients)
 {
     public async Task<Result<AdminIngredientResponse>> HandleAsync(
-        long id, UpdateIngredientRequest req, CancellationToken ct = default)
+        long id, UpdateIngredientRequest req, CancellationToken ct)
     {
         var result = await ingredients.UpdateAsync(id, req, ct);
         if (result is null) return DomainErrors.NotFound.FoodNode(id);
@@ -183,7 +176,7 @@ public sealed class UpdateIngredientHandler(IAdminIngredientWriter ingredients)
 
 public sealed class DeleteIngredientHandler(IAdminIngredientWriter ingredients)
 {
-    public async Task<Result> HandleAsync(long id, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(long id, CancellationToken ct)
     {
         var success = await ingredients.DeleteAsync(id, ct);
         if (!success) return DomainErrors.NotFound.FoodNode(id);
@@ -194,14 +187,14 @@ public sealed class DeleteIngredientHandler(IAdminIngredientWriter ingredients)
 public sealed class GetAdminTaxonsHandler(IAdminTaxonReader taxons)
 {
     public Task<AdminTaxonListResponse> HandleAsync(
-        string? kind, CancellationToken ct = default)
+        string? kind, CancellationToken ct)
         => taxons.GetAllAsync(kind, ct);
 }
 
 public sealed class CreateTaxonHandler(IAdminTaxonWriter taxons)
 {
     public async Task<Result<AdminTaxonResponse>> HandleAsync(
-        CreateTaxonRequest req, CancellationToken ct = default)
+        CreateTaxonRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.Name))
             return DomainErrors.Validation("Name", "Название обязательно");
@@ -216,7 +209,7 @@ public sealed class CreateTaxonHandler(IAdminTaxonWriter taxons)
 public sealed class UpdateTaxonHandler(IAdminTaxonWriter taxons)
 {
     public async Task<Result<AdminTaxonResponse>> HandleAsync(
-        long id, UpdateTaxonRequest req, CancellationToken ct = default)
+        long id, UpdateTaxonRequest req, CancellationToken ct)
     {
         var result = await taxons.UpdateAsync(id, req, ct);
         if (result is null) return DomainErrors.NotFound.Taxon(id);
@@ -226,7 +219,7 @@ public sealed class UpdateTaxonHandler(IAdminTaxonWriter taxons)
 
 public sealed class DeleteTaxonHandler(IAdminTaxonWriter taxons)
 {
-    public async Task<Result> HandleAsync(long id, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(long id, CancellationToken ct)
     {
         var success = await taxons.DeleteAsync(id, ct);
         if (!success) return DomainErrors.NotFound.Taxon(id);
@@ -239,12 +232,12 @@ public sealed class GetAdminStatsHandler(
     IAdminRecipeReader recipes,
     IAdminFavoritesReader favorites)
 {
-    public async Task<AdminStatsResponse> HandleAsync(CancellationToken ct = default)
+    public async Task<AdminStatsResponse> HandleAsync(CancellationToken ct)
     {
-        var totalUsers   = await users.CountAsync(ct);
+        var totalUsers = await users.CountAsync(ct);
         var totalRecipes = await recipes.CountAsync(ct);
-        var totalFavs    = await favorites.CountTotalAsync(ct);
-        var topRecipes   = await favorites.GetMostFavoritedAsync(5, ct);
+        var totalFavs = await favorites.CountTotalAsync(ct);
+        var topRecipes = await favorites.GetMostFavoritedAsync(5, ct);
 
         var popular = new List<AdminPopularRecipeResponse>();
         foreach (var (recipeId, count) in topRecipes)

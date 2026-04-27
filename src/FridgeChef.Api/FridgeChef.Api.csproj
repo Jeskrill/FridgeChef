@@ -5,7 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Bounded context Infrastructure (каждый содержит свой DbContext, репозиторий и Application) -->
     <ProjectReference Include="..\Auth\FridgeChef.Auth.Application\FridgeChef.Auth.Application.csproj" />
     <ProjectReference Include="..\Auth\FridgeChef.Auth.Infrastructure\FridgeChef.Auth.Infrastructure.csproj" />
     <ProjectReference Include="..\Catalog\FridgeChef.Catalog.Application\FridgeChef.Catalog.Application.csproj" />
@@ -19,8 +18,9 @@
     <ProjectReference Include="..\Ontology\FridgeChef.Ontology.Application\FridgeChef.Ontology.Application.csproj" />
     <ProjectReference Include="..\Ontology\FridgeChef.Ontology.Infrastructure\FridgeChef.Ontology.Infrastructure.csproj" />
     <ProjectReference Include="..\Admin\FridgeChef.Admin.Application\FridgeChef.Admin.Application.csproj" />
+    <ProjectReference Include="..\Admin\FridgeChef.Admin.Infrastructure\FridgeChef.Admin.Infrastructure.csproj" />
     <ProjectReference Include="..\Pricing\FridgeChef.Pricing.Infrastructure\FridgeChef.Pricing.Infrastructure.csproj" />
-    <ProjectReference Include="..\Taxonomy\FridgeChef.Taxonomy.Domain\FridgeChef.Taxonomy.Domain.csproj" />
+    <ProjectReference Include="..\Ontology\FridgeChef.Ontology.Domain\FridgeChef.Ontology.Domain.csproj" />
     <ProjectReference Include="..\Shared\FridgeChef.SharedKernel\FridgeChef.SharedKernel.csproj" />
   </ItemGroup>
 
