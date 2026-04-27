@@ -10,7 +10,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
     public PriceSyncRepository(PricingDbContext db) => _db = db;
 
     public async Task<long> EnsureRetailerAsync(
-        string code, string name, string baseUrl, CancellationToken ct = default)
+        string code, string name, string baseUrl, CancellationToken ct)
     {
 
         var ids = await _db.Database
@@ -29,7 +29,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
 
     public async Task<long> UpsertRetailerProductAsync(
         long retailerId, string externalSku, string title, string? brand,
-        string url, CancellationToken ct = default)
+        string url, CancellationToken ct)
     {
         var ids = await _db.Database
             .SqlQueryRaw<long>(
@@ -49,7 +49,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
 
     public async Task InsertPriceSnapshotAsync(
         long retailerProductId, decimal price, decimal? promoPrice,
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
         await _db.Database.ExecuteSqlRawAsync(
             """
@@ -61,7 +61,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
     }
 
     public async Task UpsertIngredientProductMatchAsync(
-        long foodNodeId, long retailerProductId, CancellationToken ct = default)
+        long foodNodeId, long retailerProductId, CancellationToken ct)
     {
         await _db.Database.ExecuteSqlRawAsync(
             """
@@ -78,7 +78,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
     public async Task PersistBestMatchAsync(
         long retailerId,
         IngredientToScrape ingredient,
-        ScrapedProduct best,
+        ScrapedProductDto best,
         CancellationToken ct)
     {
         await using var transaction = await _db.Database.BeginTransactionAsync(ct);
@@ -110,7 +110,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
     }
 
     public async Task<IReadOnlyList<IngredientToScrape>> GetActiveIngredientsAsync(
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
         return await _db.Database
             .SqlQueryRaw<IngredientToScrape>(
@@ -123,7 +123,7 @@ internal sealed class PriceSyncRepository : IPriceSyncRepository
             .ToListAsync(ct);
     }
 
-    public async Task<PricingStatsResponse> GetStatsAsync(CancellationToken ct = default)
+    public async Task<PricingStatsResponse> GetStatsAsync(CancellationToken ct)
     {
 
         var updatedCount = await _db.Database

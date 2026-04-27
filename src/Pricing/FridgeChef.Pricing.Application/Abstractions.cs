@@ -1,6 +1,8 @@
+using FridgeChef.Pricing.Domain;
+
 namespace FridgeChef.Pricing.Application;
 
-public sealed record ScrapedProduct(
+public sealed record ScrapedProductDto(
     string ExternalSku,
     string Title,
     string? Brand,
@@ -13,40 +15,40 @@ public interface IRetailerScraper
 
     string RetailerCode { get; }
 
-    Task<IReadOnlyList<ScrapedProduct>> SearchAsync(string query, CancellationToken ct = default);
+    Task<IReadOnlyList<ScrapedProductDto>> SearchAsync(string query, CancellationToken ct);
 }
 
 public interface IBatchRetailerScraper : IRetailerScraper
 {
 
-    Task<Dictionary<string, IReadOnlyList<ScrapedProduct>>> SearchBatchAsync(
-        IReadOnlyList<string> queries, CancellationToken ct = default);
+    Task<Dictionary<string, IReadOnlyList<ScrapedProductDto>>> SearchBatchAsync(
+        IReadOnlyList<string> queries, CancellationToken ct);
 }
 
 public interface IPriceSyncRepository
 {
-    Task<long> EnsureRetailerAsync(string code, string name, string baseUrl, CancellationToken ct = default);
+    Task<long> EnsureRetailerAsync(string code, string name, string baseUrl, CancellationToken ct);
 
     Task<long> UpsertRetailerProductAsync(
         long retailerId, string externalSku, string title, string? brand,
-        string url, CancellationToken ct = default);
+        string url, CancellationToken ct);
 
     Task InsertPriceSnapshotAsync(
         long retailerProductId, decimal price, decimal? promoPrice,
-        CancellationToken ct = default);
+        CancellationToken ct);
 
     Task UpsertIngredientProductMatchAsync(
-        long foodNodeId, long retailerProductId, CancellationToken ct = default);
+        long foodNodeId, long retailerProductId, CancellationToken ct);
 
     Task PersistBestMatchAsync(
         long retailerId,
         IngredientToScrape ingredient,
-        ScrapedProduct best,
+        ScrapedProductDto best,
         CancellationToken ct);
 
-    Task<IReadOnlyList<IngredientToScrape>> GetActiveIngredientsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<IngredientToScrape>> GetActiveIngredientsAsync(CancellationToken ct);
 
-    Task<PricingStatsResponse> GetStatsAsync(CancellationToken ct = default);
+    Task<PricingStatsResponse> GetStatsAsync(CancellationToken ct);
 }
 
 public sealed record IngredientToScrape(long FoodNodeId, string CanonicalName);

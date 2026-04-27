@@ -1,4 +1,6 @@
+using System.Net;
 using FridgeChef.Pricing.Application;
+using FridgeChef.Pricing.Domain;
 using FridgeChef.Pricing.Infrastructure.BackgroundJobs;
 using FridgeChef.Pricing.Infrastructure.Persistence;
 using FridgeChef.Pricing.Infrastructure.Scraping;
@@ -21,14 +23,14 @@ internal sealed class PricingRepository : IPricingRepository
     private readonly PricingDbContext _db;
     public PricingRepository(PricingDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<IngredientPriceResponse>> GetPricesForFoodNodesAsync(
-        IEnumerable<long> foodNodeIds, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IngredientPrice>> GetPricesForFoodNodesAsync(
+        IEnumerable<long> foodNodeIds, CancellationToken ct)
     {
         var ids = foodNodeIds.ToList();
-        if (ids.Count == 0) return Array.Empty<IngredientPriceResponse>();
+        if (ids.Count == 0) return Array.Empty<IngredientPrice>();
 
         var result = await _db.Database
-            .SqlQueryRaw<IngredientPriceResponse>(
+            .SqlQueryRaw<IngredientPrice>(
                 """
                 SELECT DISTINCT ON (ipm.food_node_id)
                     ipm.food_node_id AS "FoodNodeId",
@@ -80,11 +82,32 @@ public static class PricingInfrastructureExtensions
         services.Configure<PuppeteerScraperOptions>(
             configuration.GetSection(PuppeteerScraperOptions.Section));
 
-        services.AddSingleton<PuppeteerPyaterochkaScraper>();
+        var scraperOptions = configuration
+            .GetSection(PuppeteerScraperOptions.Section)
+            .Get<PuppeteerScraperOptions>() ?? new PuppeteerScraperOptions();
+
+        services.AddHttpClient<PuppeteerPyaterochkaScraper>(client =>
+        {
+            client.BaseAddress = new Uri(scraperOptions.BaseUrl);
+            client.Timeout = TimeSpan.FromSeconds(scraperOptions.SingleTimeoutSeconds);
+        });
         services.AddSingleton<IRetailerScraper>(sp =>
             sp.GetRequiredService<PuppeteerPyaterochkaScraper>());
 
-        services.AddSingleton<HttpPyaterochkaScraper>();
+        services.AddHttpClient<HttpPyaterochkaScraper>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+            client.DefaultRequestHeaders.Add("User-Agent",
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
+            client.DefaultRequestHeaders.Add("Accept",
+                "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            client.DefaultRequestHeaders.Add("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
+            AllowAutoRedirect = true,
+            MaxAutomaticRedirections = 5
+        });
 
         services.AddHostedService<PriceSyncBackgroundService>();
 

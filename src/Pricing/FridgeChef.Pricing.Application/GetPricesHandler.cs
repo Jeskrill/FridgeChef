@@ -1,24 +1,18 @@
-namespace FridgeChef.Pricing.Application;
+using FridgeChef.Pricing.Domain;
 
-public sealed record IngredientPriceResponse(
-    long FoodNodeId,
-    string ProductTitle,
-    decimal Price,
-    decimal? PromoPrice,
-    string? ProductUrl,
-    string RetailerName);
+namespace FridgeChef.Pricing.Application;
 
 public interface IPricingRepository
 {
-    Task<IReadOnlyList<IngredientPriceResponse>> GetPricesForFoodNodesAsync(
+    Task<IReadOnlyList<IngredientPrice>> GetPricesForFoodNodesAsync(
         IEnumerable<long> foodNodeIds,
-        CancellationToken ct = default);
+        CancellationToken ct);
 }
 
 public sealed class GetPricesHandler(IPricingRepository pricing)
 {
-    public async Task<IReadOnlyList<IngredientPriceResponse>> HandleAsync(
-        long[] foodNodeIds, CancellationToken ct = default)
+    public async Task<IReadOnlyList<IngredientPrice>> HandleAsync(
+        long[] foodNodeIds, CancellationToken ct)
     {
         var distinctIds = foodNodeIds
             .Where(id => id > 0)
@@ -26,7 +20,7 @@ public sealed class GetPricesHandler(IPricingRepository pricing)
             .ToArray();
 
         if (distinctIds.Length == 0)
-            return Array.Empty<IngredientPriceResponse>();
+            return Array.Empty<IngredientPrice>();
 
         return await pricing.GetPricesForFoodNodesAsync(distinctIds, ct);
     }

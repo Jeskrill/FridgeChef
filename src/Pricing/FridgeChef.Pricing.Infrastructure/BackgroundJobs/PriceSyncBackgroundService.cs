@@ -33,7 +33,7 @@ public sealed class PriceSyncBackgroundService : BackgroundService
             _logger.LogInformation(
                 "Price sync auto-start is DISABLED. Use POST /admin/pricing/sync to trigger manually. " +
                 "Set Pricing:AutoSync=true to enable.");
-            return; // Exit — no background loop
+            return;
         }
 
         _logger.LogInformation("Price sync background service started. First sync in 5 minutes.");

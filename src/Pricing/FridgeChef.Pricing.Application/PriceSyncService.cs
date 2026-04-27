@@ -10,8 +10,6 @@ public sealed class PriceSyncService
     private readonly ILogger<PriceSyncService> _logger;
     private readonly PriceSyncOptions _options;
 
-    private const int MaxParallelism = 4;
-
     public PriceSyncService(
         IRetailerScraper scraper,
         IPriceSyncRepository repository,
@@ -24,7 +22,7 @@ public sealed class PriceSyncService
         _logger = logger;
     }
 
-    public async Task SyncAllAsync(CancellationToken ct = default)
+    public async Task SyncAllAsync(CancellationToken ct)
     {
         _logger.LogInformation("Starting price sync for retailer {Retailer}", _scraper.RetailerCode);
 
@@ -169,7 +167,7 @@ public sealed class PriceSyncService
 
     private async Task PersistBestMatchAsync(
         long retailerId, IngredientToScrape ingredient,
-        ScrapedProduct best, CancellationToken ct)
+        ScrapedProductDto best, CancellationToken ct)
     {
         await _repository.PersistBestMatchAsync(retailerId, ingredient, best, ct);
     }

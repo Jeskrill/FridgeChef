@@ -38,7 +38,7 @@ internal sealed class FavoriteRecipeRepository : IFavoriteRecipeRepository
     public FavoriteRecipeRepository(FavoritesDbContext db) => _db = db;
 
     public async Task<IReadOnlyList<FavoriteRecipeResponse>> GetByUserIdAsync(
-        Guid userId, IRecipeSummaryProvider recipes, CancellationToken ct = default)
+        Guid userId, IRecipeSummaryProvider recipes, CancellationToken ct)
     {
         var entities = await _db.FavoriteRecipes
             .Where(f => f.UserId == userId)
@@ -58,10 +58,10 @@ internal sealed class FavoriteRecipeRepository : IFavoriteRecipeRepository
             .ToList();
     }
 
-    public async Task<bool> ExistsAsync(Guid userId, Guid recipeId, CancellationToken ct = default) =>
+    public async Task<bool> ExistsAsync(Guid userId, Guid recipeId, CancellationToken ct) =>
         await _db.FavoriteRecipes.AnyAsync(f => f.UserId == userId && f.RecipeId == recipeId, ct);
 
-    public async Task AddAsync(Guid userId, Guid recipeId, CancellationToken ct = default)
+    public async Task AddAsync(Guid userId, Guid recipeId, CancellationToken ct)
     {
         _db.FavoriteRecipes.Add(new FavoriteRecipeEntity
         {
@@ -72,11 +72,11 @@ internal sealed class FavoriteRecipeRepository : IFavoriteRecipeRepository
         await _db.SaveChangesAsync(ct);
     }
 
-    public Task<int> CountTotalAsync(CancellationToken ct = default) =>
+    public Task<int> CountTotalAsync(CancellationToken ct) =>
         _db.FavoriteRecipes.CountAsync(ct);
 
     public async Task<IReadOnlyList<(Guid RecipeId, int Count)>> GetMostFavoritedAsync(
-        int limit, CancellationToken ct = default)
+        int limit, CancellationToken ct)
     {
         var result = await _db.FavoriteRecipes
             .GroupBy(f => f.RecipeId)
@@ -87,7 +87,7 @@ internal sealed class FavoriteRecipeRepository : IFavoriteRecipeRepository
         return result.Select(x => (x.RecipeId, x.Count)).ToList();
     }
 
-    public async Task RemoveAsync(Guid userId, Guid recipeId, CancellationToken ct = default) =>
+    public async Task RemoveAsync(Guid userId, Guid recipeId, CancellationToken ct) =>
         await _db.FavoriteRecipes
             .Where(f => f.UserId == userId && f.RecipeId == recipeId)
             .ExecuteDeleteAsync(ct);

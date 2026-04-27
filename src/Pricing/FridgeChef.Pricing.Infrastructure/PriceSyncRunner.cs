@@ -1,4 +1,3 @@
-using System.Threading;
 using FridgeChef.Pricing.Application;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

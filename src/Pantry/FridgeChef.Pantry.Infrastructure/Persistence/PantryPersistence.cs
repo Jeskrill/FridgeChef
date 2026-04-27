@@ -43,7 +43,7 @@ internal sealed class PantryRepository : IPantryRepository
     private readonly PantryDbContext _db;
     public PantryRepository(PantryDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<PantryItemResponse>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PantryItemResponse>> GetByUserIdAsync(Guid userId, CancellationToken ct)
     {
         var entities = await _db.PantryItems
             .Where(p => p.UserId == userId)
@@ -52,16 +52,19 @@ internal sealed class PantryRepository : IPantryRepository
         return entities.Select(ToDto).ToList();
     }
 
-    public async Task<PantryItemResponse?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<PantryItemResponse?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var e = await _db.PantryItems.FirstOrDefaultAsync(p => p.Id == id, ct);
         return e is null ? null : ToDto(e);
     }
 
-    public async Task<bool> ExistsAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
+    public async Task<bool> ExistsAsync(Guid userId, long foodNodeId, CancellationToken ct) =>
         await _db.PantryItems.AnyAsync(p => p.UserId == userId && p.FoodNodeId == foodNodeId, ct);
 
-    public async Task<PantryItemResponse> AddAsync(Guid userId, AddPantryItemRequest request, CancellationToken ct = default)
+    public async Task<bool> ExistsByIdAndUserAsync(Guid id, Guid userId, CancellationToken ct) =>
+        await _db.PantryItems.AnyAsync(p => p.Id == id && p.UserId == userId, ct);
+
+    public async Task<PantryItemResponse> AddAsync(Guid userId, AddPantryItemRequest request, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
         var entity = new PantryItemEntity
@@ -71,7 +74,7 @@ internal sealed class PantryRepository : IPantryRepository
             FoodNodeId = request.FoodNodeId,
             QuantityValue = request.Quantity,
             UnitId = request.UnitId,
-            QuantityMode = request.UnitId.HasValue ? "exact" : "unknown",
+            QuantityMode = request.UnitId.HasValue ? QuantityMode.Exact.ToString().ToLowerInvariant() : QuantityMode.Unknown.ToString().ToLowerInvariant(),
             Source = "manual",
             CreatedAt = now,
             UpdatedAt = now
@@ -81,7 +84,7 @@ internal sealed class PantryRepository : IPantryRepository
         return ToDto(entity);
     }
 
-    public async Task<PantryItemResponse> UpdateAsync(Guid id, UpdatePantryItemRequest request, CancellationToken ct = default)
+    public async Task<PantryItemResponse> UpdateAsync(Guid id, UpdatePantryItemRequest request, CancellationToken ct)
     {
         var entity = await _db.PantryItems.FirstAsync(p => p.Id == id, ct);
         if (request.Quantity.HasValue) entity.QuantityValue = request.Quantity;
@@ -92,10 +95,10 @@ internal sealed class PantryRepository : IPantryRepository
         return ToDto(entity);
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken ct = default) =>
+    public async Task DeleteAsync(Guid id, CancellationToken ct) =>
         await _db.PantryItems.Where(p => p.Id == id).ExecuteDeleteAsync(ct);
 
-    public async Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct)
     {
         var ids = await _db.PantryItems
             .Where(p => p.UserId == userId)
@@ -109,7 +112,7 @@ internal sealed class PantryRepository : IPantryRepository
         FoodNodeId: e.FoodNodeId,
         Quantity: e.QuantityValue,
         UnitId: e.UnitId,
-        QuantityMode: e.QuantityMode ?? "unknown",
+        QuantityMode: Enum.TryParse<QuantityMode>(e.QuantityMode, true, out var mode) ? mode : QuantityMode.Unknown,
         CreatedAt: e.CreatedAt);
 }
 
@@ -118,6 +121,6 @@ internal sealed class PantrySupplierAdapter : IPantrySupplier
     private readonly IPantryRepository _pantry;
     public PantrySupplierAdapter(IPantryRepository pantry) => _pantry = pantry;
 
-    public Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct = default) =>
+    public Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct) =>
         _pantry.GetFoodNodeIdsByUserAsync(userId, ct);
 }

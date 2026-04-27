@@ -1,25 +1,26 @@
+using FluentValidation;
 using FridgeChef.Pantry.Domain;
 using FridgeChef.SharedKernel;
-using FluentValidation;
 
 namespace FridgeChef.Pantry.Application.UseCases;
 
 public sealed record PantryItemResponse(
     Guid Id, long FoodNodeId, decimal? Quantity,
-    long? UnitId, string QuantityMode, DateTime CreatedAt);
+    long? UnitId, QuantityMode QuantityMode, DateTime CreatedAt);
 
 public sealed record AddPantryItemRequest(long FoodNodeId, decimal? Quantity, long? UnitId);
 public sealed record UpdatePantryItemRequest(decimal? Quantity, long? UnitId);
 
 public interface IPantryRepository
 {
-    Task<IReadOnlyList<PantryItemResponse>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
-    Task<PantryItemResponse?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<bool> ExistsAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
-    Task<PantryItemResponse> AddAsync(Guid userId, AddPantryItemRequest request, CancellationToken ct = default);
-    Task<PantryItemResponse> UpdateAsync(Guid id, UpdatePantryItemRequest request, CancellationToken ct = default);
-    Task DeleteAsync(Guid id, CancellationToken ct = default);
-    Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlyList<PantryItemResponse>> GetByUserIdAsync(Guid userId, CancellationToken ct);
+    Task<PantryItemResponse?> GetByIdAsync(Guid id, CancellationToken ct);
+    Task<bool> ExistsAsync(Guid userId, long foodNodeId, CancellationToken ct);
+    Task<bool> ExistsByIdAndUserAsync(Guid id, Guid userId, CancellationToken ct);
+    Task<PantryItemResponse> AddAsync(Guid userId, AddPantryItemRequest request, CancellationToken ct);
+    Task<PantryItemResponse> UpdateAsync(Guid id, UpdatePantryItemRequest request, CancellationToken ct);
+    Task DeleteAsync(Guid id, CancellationToken ct);
+    Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct);
 }
 
 public sealed class AddPantryItemValidator : AbstractValidator<AddPantryItemRequest>
@@ -50,14 +51,14 @@ public sealed class UpdatePantryItemValidator : AbstractValidator<UpdatePantryIt
 public sealed class GetPantryItemsHandler(IPantryRepository pantry)
 {
     public Task<IReadOnlyList<PantryItemResponse>> HandleAsync(
-        Guid userId, CancellationToken ct = default)
+        Guid userId, CancellationToken ct)
         => pantry.GetByUserIdAsync(userId, ct);
 }
 
 public sealed class AddPantryItemHandler(IPantryRepository pantry)
 {
     public async Task<Result<PantryItemResponse>> HandleAsync(
-        Guid userId, AddPantryItemRequest req, CancellationToken ct = default)
+        Guid userId, AddPantryItemRequest req, CancellationToken ct)
     {
         var exists = await pantry.ExistsAsync(userId, req.FoodNodeId, ct);
         if (exists) return DomainErrors.Pantry.AlreadyExists;
@@ -70,10 +71,9 @@ public sealed class AddPantryItemHandler(IPantryRepository pantry)
 public sealed class UpdatePantryItemHandler(IPantryRepository pantry)
 {
     public async Task<Result<PantryItemResponse>> HandleAsync(
-        Guid userId, Guid itemId, UpdatePantryItemRequest req, CancellationToken ct = default)
+        Guid userId, Guid itemId, UpdatePantryItemRequest req, CancellationToken ct)
     {
-        var item = await pantry.GetByIdAsync(itemId, ct);
-        if (item is null || !await pantry.ExistsAsync(userId, item.FoodNodeId, ct))
+        if (!await pantry.ExistsByIdAndUserAsync(itemId, userId, ct))
             return DomainErrors.NotFound.PantryItem(itemId);
 
         var updated = await pantry.UpdateAsync(itemId, req, ct);
@@ -83,13 +83,9 @@ public sealed class UpdatePantryItemHandler(IPantryRepository pantry)
 
 public sealed class RemovePantryItemHandler(IPantryRepository pantry)
 {
-    public async Task<Result> HandleAsync(Guid userId, Guid itemId, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, Guid itemId, CancellationToken ct)
     {
-        var item = await pantry.GetByIdAsync(itemId, ct);
-        if (item is null) return DomainErrors.NotFound.PantryItem(itemId);
-
-        var userItems = await pantry.GetByUserIdAsync(userId, ct);
-        if (userItems.All(i => i.Id != itemId))
+        if (!await pantry.ExistsByIdAndUserAsync(itemId, userId, ct))
             return DomainErrors.NotFound.PantryItem(itemId);
 
         await pantry.DeleteAsync(itemId, ct);

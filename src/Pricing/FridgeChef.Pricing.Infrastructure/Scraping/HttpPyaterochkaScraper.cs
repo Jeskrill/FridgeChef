@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -6,67 +7,36 @@ using Microsoft.Extensions.Logging;
 
 namespace FridgeChef.Pricing.Infrastructure.Scraping;
 
-public sealed class HttpPyaterochkaScraper : IRetailerScraper
+public sealed partial class HttpPyaterochkaScraper : IRetailerScraper
 {
     private readonly ILogger<HttpPyaterochkaScraper> _logger;
-    private readonly CookieContainer _cookieContainer;
     private readonly HttpClient _httpClient;
     private volatile bool _cookiesSet;
 
-    private const string SearchUrlTemplate = "https://5ka.ru/search/?text={0}";
     private const int DelayBetweenRequestsMs = 1_500;
 
     public string RetailerCode => "pyaterochka";
 
-    public HttpPyaterochkaScraper(ILogger<HttpPyaterochkaScraper> logger)
+    public HttpPyaterochkaScraper(HttpClient httpClient, ILogger<HttpPyaterochkaScraper> logger)
     {
         _logger = logger;
-        _cookieContainer = new CookieContainer();
-
-        var handler = new HttpClientHandler
-        {
-            CookieContainer = _cookieContainer,
-            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli,
-            AllowAutoRedirect = true,
-            MaxAutomaticRedirections = 5
-        };
-
-        _httpClient = new HttpClient(handler)
-        {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
-
-        _httpClient.DefaultRequestHeaders.Add("User-Agent",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36");
-        _httpClient.DefaultRequestHeaders.Add("Accept",
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-        _httpClient.DefaultRequestHeaders.Add("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
-        _httpClient.DefaultRequestHeaders.Add("Accept-Encoding", "gzip, deflate, br");
-    }
-
-    public void SetCookies(string cookieString)
-    {
-        foreach (var part in cookieString.Split(';', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var trimmed = part.Trim();
-            var eqIdx = trimmed.IndexOf('=');
-            if (eqIdx <= 0) continue;
-
-            var name = trimmed[..eqIdx];
-            var value = trimmed[(eqIdx + 1)..];
-
-            _cookieContainer.Add(new Cookie(name, value, "/", ".5ka.ru"));
-        }
-
-        _cookiesSet = true;
-        _logger.LogInformation("Set {Count} cookies for 5ka.ru",
-            cookieString.Split(';', StringSplitOptions.RemoveEmptyEntries).Length);
+        _httpClient = httpClient;
     }
 
     public bool HasCookies => _cookiesSet;
 
-    public async Task<IReadOnlyList<ScrapedProduct>> SearchAsync(
-        string query, CancellationToken ct = default)
+    public void MarkCookiesSet()
+    {
+        _cookiesSet = true;
+    }
+
+    public void MarkCookiesExpired()
+    {
+        _cookiesSet = false;
+    }
+
+    public async Task<IReadOnlyList<ScrapedProductDto>> SearchAsync(
+        string query, CancellationToken ct)
     {
         if (!_cookiesSet)
         {
@@ -78,7 +48,7 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
 
         try
         {
-            var url = string.Format(SearchUrlTemplate, Uri.EscapeDataString(query));
+            var url = $"https://5ka.ru/search/?text={Uri.EscapeDataString(query)}";
             _logger.LogDebug("Fetching: {Query}", query);
 
             var response = await _httpClient.GetAsync(url, ct);
@@ -113,12 +83,10 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
         }
     }
 
-    private List<ScrapedProduct> ExtractProducts(string html, string query)
+    private List<ScrapedProductDto> ExtractProducts(string html, string query)
     {
 
-        var match = Regex.Match(html,
-            @"<script\s+id=""__NEXT_DATA__""[^>]*>(.*?)</script>",
-            RegexOptions.Singleline);
+        var match = NextDataRegex().Match(html);
 
         if (!match.Success)
         {
@@ -130,9 +98,9 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
         return ParseNextData(json, query);
     }
 
-    private List<ScrapedProduct> ParseNextData(string json, string query)
+    private List<ScrapedProductDto> ParseNextData(string json, string query)
     {
-        var results = new List<ScrapedProduct>();
+        var results = new List<ScrapedProductDto>();
         try
         {
             using var doc = JsonDocument.Parse(json);
@@ -201,7 +169,7 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
         return false;
     }
 
-    private static ScrapedProduct? ParseProduct(JsonElement p)
+    private static ScrapedProductDto? ParseProduct(JsonElement p)
     {
         var id = GetStringOrNumber(p, "id") ?? GetStringOrNumber(p, "plu") ?? "";
         if (string.IsNullOrEmpty(id)) return null;
@@ -246,7 +214,7 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
             ? $"https://5ka.ru/product/{slug}/"
             : $"https://5ka.ru/product/{id}";
 
-        return new ScrapedProduct(id, name, brand, regularPrice, discountPrice, url);
+        return new ScrapedProductDto(id, name, brand, regularPrice, discountPrice, url);
     }
 
     private static string? GetStringOrNumber(JsonElement el, string prop)
@@ -255,7 +223,7 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
         return val.ValueKind switch
         {
             JsonValueKind.String => val.GetString(),
-            JsonValueKind.Number => val.GetInt64().ToString(),
+            JsonValueKind.Number => val.GetInt64().ToString(CultureInfo.InvariantCulture),
             _ => null
         };
     }
@@ -266,4 +234,7 @@ public sealed class HttpPyaterochkaScraper : IRetailerScraper
         JsonValueKind.String => decimal.TryParse(el.GetString(), out var d) ? d : 0,
         _ => 0
     };
+
+    [GeneratedRegex(@"<script\s+id=""__NEXT_DATA__""[^>]*>(.*?)</script>", RegexOptions.Singleline)]
+    private static partial Regex NextDataRegex();
 }

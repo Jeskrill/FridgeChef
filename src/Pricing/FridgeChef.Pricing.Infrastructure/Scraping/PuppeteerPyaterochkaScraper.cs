@@ -21,7 +21,7 @@ public sealed class PuppeteerScraperOptions
     public int BatchTimeoutSeconds { get; set; } = 600;
 }
 
-public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDisposable
+public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper
 {
     private readonly HttpClient _http;
     private readonly PuppeteerScraperOptions _options;
@@ -36,20 +36,17 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
     public string RetailerCode => "pyaterochka";
 
     public PuppeteerPyaterochkaScraper(
+        HttpClient httpClient,
         IOptions<PuppeteerScraperOptions> options,
         ILogger<PuppeteerPyaterochkaScraper> logger)
     {
         _options = options.Value;
         _logger = logger;
-        _http = new HttpClient
-        {
-            BaseAddress = new Uri(_options.BaseUrl),
-            Timeout = TimeSpan.FromSeconds(_options.SingleTimeoutSeconds),
-        };
+        _http = httpClient;
     }
 
-    public async Task<IReadOnlyList<ScrapedProduct>> SearchAsync(
-        string query, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ScrapedProductDto>> SearchAsync(
+        string query, CancellationToken ct)
     {
         try
         {
@@ -84,7 +81,7 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
             return result.Products?
                 .Select(MapProduct)
                 .Where(p => p is not null)
-                .Cast<ScrapedProduct>()
+                .Cast<ScrapedProductDto>()
                 .ToList()
                 ?? [];
         }
@@ -99,26 +96,22 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         }
     }
 
-    public async Task<Dictionary<string, IReadOnlyList<ScrapedProduct>>> SearchBatchAsync(
-        IReadOnlyList<string> queries, CancellationToken ct = default)
+    public async Task<Dictionary<string, IReadOnlyList<ScrapedProductDto>>> SearchBatchAsync(
+        IReadOnlyList<string> queries, CancellationToken ct)
     {
-        var results = new Dictionary<string, IReadOnlyList<ScrapedProduct>>();
+        var results = new Dictionary<string, IReadOnlyList<ScrapedProductDto>>();
         if (queries.Count == 0) return results;
 
         try
         {
-            using var batchClient = new HttpClient
-            {
-                BaseAddress = new Uri(_options.BaseUrl),
-                Timeout = TimeSpan.FromSeconds(_options.BatchTimeoutSeconds),
-            };
-
             var payload = JsonSerializer.Serialize(
                 new { queries },
                 JsonOpts);
 
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
-            var response = await batchClient.PostAsync("/search/batch", content, ct);
+
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/search/batch") { Content = content };
+            using var response = await _http.SendAsync(request, ct);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -139,7 +132,7 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
                 var products = item.Products?
                     .Select(MapProduct)
                     .Where(p => p is not null)
-                    .Cast<ScrapedProduct>()
+                    .Cast<ScrapedProductDto>()
                     .ToList() ?? [];
                 results[item.Query] = products;
             }
@@ -162,7 +155,7 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
     }
 
     public async Task<(bool ready, string? error)> CheckHealthAsync(
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
         try
         {
@@ -181,7 +174,7 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         }
     }
 
-    public async Task RestartBrowserAsync(CancellationToken ct = default)
+    public async Task RestartBrowserAsync(CancellationToken ct)
     {
         try
         {
@@ -194,7 +187,7 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         }
     }
 
-    public async Task<bool> SetCookiesAsync(string cookieString, CancellationToken ct = default)
+    public async Task<bool> SetCookiesAsync(string cookieString, CancellationToken ct)
     {
         try
         {
@@ -220,14 +213,14 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
         }
     }
 
-    private static ScrapedProduct? MapProduct(ScrapeProductDto? p)
+    private static ScrapedProductDto? MapProduct(ScrapeProductDto? p)
     {
         if (p is null) return null;
         if (string.IsNullOrEmpty(p.ExternalSku) || string.IsNullOrEmpty(p.Title))
             return null;
         if (p.RegularPrice <= 0) return null;
 
-        return new ScrapedProduct(
+        return new ScrapedProductDto(
             p.ExternalSku,
             p.Title,
             p.Brand,
@@ -235,8 +228,6 @@ public sealed class PuppeteerPyaterochkaScraper : IBatchRetailerScraper, IDispos
             p.DiscountPrice,
             p.ProductUrl ?? $"https://5ka.ru/product/{p.ExternalSku}");
     }
-
-    public void Dispose() => _http.Dispose();
 
     private sealed record ScrapeResult(
         string? Query,
