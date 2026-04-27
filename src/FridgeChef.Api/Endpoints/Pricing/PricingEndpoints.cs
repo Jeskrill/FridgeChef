@@ -1,6 +1,7 @@
 using FridgeChef.Pricing.Application;
-using FridgeChef.Pricing.Infrastructure.Scraping;
+using FridgeChef.Pricing.Domain;
 using FridgeChef.Pricing.Infrastructure;
+using FridgeChef.Pricing.Infrastructure.Scraping;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Pricing;
@@ -21,26 +22,26 @@ internal static class PricingEndpoints
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["ids"] = ["Ingredient IDs must be positive."]
+                    ["ids"] = ["ID ингредиентов должны быть положительными."]
                 });
             }
 
             var distinctIds = ids.Distinct().ToArray();
             if (distinctIds.Length == 0)
-                return Results.Ok(Array.Empty<IngredientPriceResponse>());
+                return Results.Ok(Array.Empty<IngredientPrice>());
 
             if (distinctIds.Length > MaxIngredientIds)
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["ids"] = [$"No more than {MaxIngredientIds} ingredient IDs are allowed per request."]
+                    ["ids"] = [$"Допускается не более {MaxIngredientIds} ID ингредиентов за запрос."]
                 });
             }
 
             return Results.Ok(await handler.HandleAsync(distinctIds, ct));
         })
         .WithTags("Pricing")
-        .Produces<IReadOnlyList<IngredientPriceResponse>>()
+        .Produces<IReadOnlyList<IngredientPrice>>()
         .Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
         .WithSummary("Цены на ингредиенты")
         .WithDescription("""
@@ -80,7 +81,7 @@ internal static class PricingEndpoints
                 lastSyncAt = stats.LastSyncAt,
                 instructions = !ready
                     ? "Start sidecar: cd tools/scraper && node server.js"
-                    : "Ready. POST to /admin/pricing/synchronization to start.",
+                    : "Готово. Отправьте POST на /admin/pricing/synchronization для запуска.",
             });
         })
         .Produces(StatusCodes.Status200OK)
@@ -114,7 +115,7 @@ internal static class PricingEndpoints
                     detail: "Дождитесь завершения текущего запуска и повторите запрос позже.");
             }
 
-            return Results.Ok(new { message = "Sync completed" });
+            return Results.Ok(new { message = "Синхронизация завершена" });
         })
         .Produces(StatusCodes.Status200OK)
         .Produces<ProblemDetails>(StatusCodes.Status409Conflict)
@@ -136,7 +137,7 @@ internal static class PricingEndpoints
             CancellationToken ct) =>
         {
             await scraper.RestartBrowserAsync(ct);
-            return Results.Ok(new { message = "Browser restart requested" });
+            return Results.Ok(new { message = "Перезапуск браузера запрошен" });
         })
         .Produces(StatusCodes.Status200OK)
         .WithSummary("Переподключиться к Chrome")
@@ -155,7 +156,7 @@ internal static class PricingEndpoints
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["query"] = ["Query is required."]
+                    ["query"] = ["Поисковый запрос обязателен."]
                 });
             }
 
@@ -183,4 +184,4 @@ internal static class PricingEndpoints
     }
 }
 
-public record SearchTestRequest(string Query);
+internal sealed record SearchTestRequest(string Query);

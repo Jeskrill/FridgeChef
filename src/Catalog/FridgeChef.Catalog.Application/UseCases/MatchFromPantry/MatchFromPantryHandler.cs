@@ -6,8 +6,8 @@ using FridgeChef.Catalog.Domain;
 namespace FridgeChef.Catalog.Application.UseCases.MatchFromPantry;
 
 public sealed record MatchRequest(
-    long[]? DietFilterIds = null,
-    int MaxResults = 50);
+    long[]? DietFilterIds,
+    int MaxResults);
 
 public sealed class MatchRequestValidator : AbstractValidator<MatchRequest>
 {
@@ -44,7 +44,7 @@ public sealed class MatchFromPantryHandler
     }
 
     public async Task<IReadOnlyList<MatchResultResponse>> HandleAsync(
-        Guid userId, MatchRequest request, CancellationToken ct = default)
+        Guid userId, MatchRequest request, CancellationToken ct)
     {
         var pantryNodeIds = await _pantry.GetFoodNodeIdsByUserAsync(userId, ct);
         if (pantryNodeIds.Count == 0) return [];
@@ -96,16 +96,16 @@ public sealed class MatchFromPantryHandler
 
 public interface IPantrySupplier
 {
-    Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> GetFoodNodeIdsByUserAsync(Guid userId, CancellationToken ct);
 }
 
 public interface IUserPreferencesSupplier
 {
-    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct);
 }
 
 public interface IFoodHierarchySupplier
 {
-    Task<IReadOnlySet<long>> ExpandDescendantsAsync(IEnumerable<long> foodNodeIds, CancellationToken ct = default);
-    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(IEnumerable<long> allergenNodeIds, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> ExpandDescendantsAsync(IEnumerable<long> foodNodeIds, CancellationToken ct);
+    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(IEnumerable<long> allergenNodeIds, CancellationToken ct);
 }

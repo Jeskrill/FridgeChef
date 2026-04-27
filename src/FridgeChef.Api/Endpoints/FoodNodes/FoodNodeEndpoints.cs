@@ -1,6 +1,6 @@
-using FridgeChef.Ontology.Application.UseCases;
-using FridgeChef.Catalog.Application.Dto;
 using FridgeChef.Api.Middleware;
+using FridgeChef.Catalog.Application.Dto;
+using FridgeChef.Ontology.Application.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.FoodNodes;
@@ -47,7 +47,7 @@ internal static class FoodNodeEndpoints
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["id"] = ["Food node ID must be positive."]
+                    ["id"] = ["ID продукта должен быть положительным."]
                 });
             }
 

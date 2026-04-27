@@ -10,7 +10,7 @@ public sealed class GetRecipeDetailHandler
     public GetRecipeDetailHandler(IRecipeRepository recipes) => _recipes = recipes;
 
     public async Task<Result<RecipeDetailResponse>> HandleAsync(
-        string slug, CancellationToken ct = default)
+        string slug, CancellationToken ct)
     {
         var detail = await _recipes.GetDetailBySlugAsync(slug, ct);
 

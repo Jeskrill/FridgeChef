@@ -92,13 +92,13 @@ internal sealed class UserPreferencesRepository : IUserPreferencesRepository
     private readonly UserPreferencesDbContext _db;
     public UserPreferencesRepository(UserPreferencesDbContext db) => _db = db;
 
-    public async Task<IReadOnlyList<AllergenResponse>> GetAllergensAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<AllergenResponse>> GetAllergensAsync(Guid userId, CancellationToken ct)
     {
         var entities = await _db.UserAllergens.Where(a => a.UserId == userId).ToListAsync(ct);
         return entities.Select(e => new AllergenResponse(e.FoodNodeId, e.Severity)).ToList();
     }
 
-    public async Task AddAllergenAsync(Guid userId, AddAllergenRequest request, CancellationToken ct = default)
+    public async Task AddAllergenAsync(Guid userId, AddAllergenRequest request, CancellationToken ct)
     {
         _db.UserAllergens.Add(new UserAllergenEntity
         {
@@ -110,86 +110,94 @@ internal sealed class UserPreferencesRepository : IUserPreferencesRepository
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveAllergenAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
+    public async Task RemoveAllergenAsync(Guid userId, long foodNodeId, CancellationToken ct) =>
         await _db.UserAllergens.Where(a => a.UserId == userId && a.FoodNodeId == foodNodeId).ExecuteDeleteAsync(ct);
 
-    public async Task<IReadOnlyList<FavoriteFoodResponse>> GetFavoriteFoodsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<FavoriteFoodResponse>> GetFavoriteFoodsAsync(Guid userId, CancellationToken ct)
     {
         var entities = await _db.UserFavoriteFoods.Where(f => f.UserId == userId).ToListAsync(ct);
         return entities.Select(e => new FavoriteFoodResponse(e.FoodNodeId)).ToList();
     }
 
-    public async Task AddFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default)
+    public async Task AddFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct)
     {
         _db.UserFavoriteFoods.Add(new UserFavoriteFoodEntity { UserId = userId, FoodNodeId = foodNodeId, Weight = 1.0m, CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
+    public async Task RemoveFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct) =>
         await _db.UserFavoriteFoods.Where(f => f.UserId == userId && f.FoodNodeId == foodNodeId).ExecuteDeleteAsync(ct);
 
-    public async Task<IReadOnlyList<ExcludedFoodResponse>> GetExcludedFoodsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ExcludedFoodResponse>> GetExcludedFoodsAsync(Guid userId, CancellationToken ct)
     {
         var entities = await _db.UserExcludedFoods.Where(e => e.UserId == userId).ToListAsync(ct);
         return entities.Select(e => new ExcludedFoodResponse(e.FoodNodeId)).ToList();
     }
 
-    public async Task AddExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default)
+    public async Task AddExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct)
     {
         _db.UserExcludedFoods.Add(new UserExcludedFoodEntity { UserId = userId, FoodNodeId = foodNodeId, CreatedAt = DateTime.UtcNow });
         await _db.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default) =>
+    public async Task RemoveExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct) =>
         await _db.UserExcludedFoods.Where(e => e.UserId == userId && e.FoodNodeId == foodNodeId).ExecuteDeleteAsync(ct);
 
-    public async Task<IReadOnlyList<UserDietResponse>> GetDefaultDietsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserDietResponse>> GetDefaultDietsAsync(Guid userId, CancellationToken ct)
     {
         var entities = await _db.UserDefaultDiets.Where(d => d.UserId == userId).ToListAsync(ct);
         return entities.Select(e => new UserDietResponse(e.TaxonId)).ToList();
     }
 
-    public async Task ReplaceDefaultDietsAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default)
+    public async Task ReplaceDefaultDietsAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        var now = DateTime.UtcNow;
+
         await _db.UserDefaultDiets.Where(d => d.UserId == userId).ExecuteDeleteAsync(ct);
-        var newDiets = taxonIds.Select(id => new UserDefaultDietEntity { UserId = userId, TaxonId = id, CreatedAt = DateTime.UtcNow });
+        var newDiets = taxonIds.Select(id => new UserDefaultDietEntity { UserId = userId, TaxonId = id, CreatedAt = now });
         _db.UserDefaultDiets.AddRange(newDiets);
         await _db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
-    public async Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct)
     {
         var ids = await _db.UserAllergens.Where(a => a.UserId == userId).Select(a => a.FoodNodeId).ToListAsync(ct);
         return ids.ToHashSet();
     }
 
-    public async Task<IReadOnlySet<long>> GetFavoriteFoodNodeIdsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlySet<long>> GetFavoriteFoodNodeIdsAsync(Guid userId, CancellationToken ct)
     {
         var ids = await _db.UserFavoriteFoods.Where(f => f.UserId == userId).Select(f => f.FoodNodeId).ToListAsync(ct);
         return ids.ToHashSet();
     }
 
-    public async Task<IReadOnlySet<long>> GetDefaultDietTaxonIdsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlySet<long>> GetDefaultDietTaxonIdsAsync(Guid userId, CancellationToken ct)
     {
         var ids = await _db.UserDefaultDiets.Where(d => d.UserId == userId).Select(d => d.TaxonId).ToListAsync(ct);
         return ids.ToHashSet();
     }
 
-    public async Task<IReadOnlyList<UserCuisineResponse>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<UserCuisineResponse>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct)
     {
         var entities = await _db.UserPreferredCuisines.Where(c => c.UserId == userId).ToListAsync(ct);
         return entities.Select(e => new UserCuisineResponse(e.TaxonId)).ToList();
     }
 
-    public async Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default)
+    public async Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct)
     {
+        await using var transaction = await _db.Database.BeginTransactionAsync(ct);
+        var now = DateTime.UtcNow;
+
         await _db.UserPreferredCuisines.Where(c => c.UserId == userId).ExecuteDeleteAsync(ct);
-        var newCuisines = taxonIds.Select(id => new UserPreferredCuisineEntity { UserId = userId, TaxonId = id, CreatedAt = DateTime.UtcNow });
+        var newCuisines = taxonIds.Select(id => new UserPreferredCuisineEntity { UserId = userId, TaxonId = id, CreatedAt = now });
         _db.UserPreferredCuisines.AddRange(newCuisines);
         await _db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
-    public async Task<IReadOnlySet<long>> GetPreferredCuisineTaxonIdsAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlySet<long>> GetPreferredCuisineTaxonIdsAsync(Guid userId, CancellationToken ct)
     {
         var ids = await _db.UserPreferredCuisines.Where(c => c.UserId == userId).Select(c => c.TaxonId).ToListAsync(ct);
         return ids.ToHashSet();
@@ -201,7 +209,7 @@ internal sealed class UserPreferencesSupplierAdapter : IUserPreferencesSupplier
     private readonly IUserPreferencesRepository _prefs;
     public UserPreferencesSupplierAdapter(IUserPreferencesRepository prefs) => _prefs = prefs;
 
-    public Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default) =>
+    public Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct) =>
         _prefs.GetAllergenFoodNodeIdsAsync(userId, ct);
 }
 

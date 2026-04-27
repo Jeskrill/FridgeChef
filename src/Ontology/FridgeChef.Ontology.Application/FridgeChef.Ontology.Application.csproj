@@ -4,7 +4,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../FridgeChef.Ontology.Domain/FridgeChef.Ontology.Domain.csproj" />
-    <ProjectReference Include="../../Taxonomy/FridgeChef.Taxonomy.Domain/FridgeChef.Taxonomy.Domain.csproj" />
     <ProjectReference Include="../../Shared/FridgeChef.SharedKernel/FridgeChef.SharedKernel.csproj" />
   </ItemGroup>
   <ItemGroup>

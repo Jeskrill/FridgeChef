@@ -1,6 +1,6 @@
-using FridgeChef.UserPreferences.Application.UseCases;
-using FridgeChef.Api.Middleware;
 using FluentValidation;
+using FridgeChef.Api.Middleware;
+using FridgeChef.UserPreferences.Application.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Settings;
@@ -55,7 +55,7 @@ internal static class SettingsEndpoints
         {
             if (foodNodeId <= 0)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
-                    { ["foodNodeId"] = ["ID должен быть положительным."] });
+                { ["foodNodeId"] = ["ID должен быть положительным."] });
 
             var result = await handler.HandleAsync(http.User.GetUserId(), foodNodeId, ct);
             return result.ToHttpResult();
@@ -100,7 +100,7 @@ internal static class SettingsEndpoints
         {
             if (foodNodeId <= 0)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
-                    { ["foodNodeId"] = ["ID должен быть положительным."] });
+                { ["foodNodeId"] = ["ID должен быть положительным."] });
 
             var result = await handler.HandleAsync(http.User.GetUserId(), foodNodeId, ct);
             return result.ToHttpResult();
@@ -145,7 +145,7 @@ internal static class SettingsEndpoints
         {
             if (foodNodeId <= 0)
                 return Results.ValidationProblem(new Dictionary<string, string[]>
-                    { ["foodNodeId"] = ["ID должен быть положительным."] });
+                { ["foodNodeId"] = ["ID должен быть положительным."] });
 
             var result = await handler.HandleAsync(http.User.GetUserId(), foodNodeId, ct);
             return result.ToHttpResult();

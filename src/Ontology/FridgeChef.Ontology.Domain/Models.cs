@@ -59,6 +59,24 @@ public sealed record Unit(
 
 public interface IFoodHierarchyRepository
 {
-    Task<IReadOnlySet<long>> ExpandDescendantsAsync(IEnumerable<long> foodNodeIds, CancellationToken ct = default);
-    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(IEnumerable<long> allergenNodeIds, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> ExpandDescendantsAsync(IEnumerable<long> foodNodeIds, CancellationToken ct);
+    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(IEnumerable<long> allergenNodeIds, CancellationToken ct);
 }
+
+public enum TaxonKind
+{
+    Diet = 0,
+    Cuisine = 1,
+    DishType = 2,
+    Occasion = 3,
+    CookingMethod = 4,
+    Feature = 5,
+    SourceCollection = 6
+}
+
+public sealed record Taxon(
+    long Id,
+    TaxonKind Kind,
+    string Name,
+    string Slug,
+    string? Description);

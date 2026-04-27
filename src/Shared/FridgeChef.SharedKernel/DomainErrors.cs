@@ -4,9 +4,6 @@ public static class DomainErrors
 {
     public static class Auth
     {
-        public static readonly DomainError EmailAlreadyTaken =
-            new("AUTH_EMAIL_TAKEN", "Пользователь с таким email уже зарегистрирован");
-
         public static readonly DomainError EmailAlreadyExists =
             new("AUTH_EMAIL_TAKEN", "Пользователь с таким email уже зарегистрирован");
         public static readonly DomainError InvalidCredentials =

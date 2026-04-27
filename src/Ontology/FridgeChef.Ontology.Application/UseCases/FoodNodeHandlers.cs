@@ -1,5 +1,5 @@
 using FridgeChef.SharedKernel;
-using FridgeChef.Taxonomy.Domain;
+using FridgeChef.Ontology.Domain;
 
 namespace FridgeChef.Ontology.Application.UseCases;
 
@@ -10,30 +10,30 @@ public sealed record TaxonResponse(long Id, string Name, string Slug, string Kin
 
 public interface IFoodNodeRepository
 {
-    Task<IReadOnlyList<FoodNodeSearchResponse>> SearchAsync(string query, int limit = 10, CancellationToken ct = default);
-    Task<FoodNodeResponse?> GetByIdAsync(long id, CancellationToken ct = default);
+    Task<IReadOnlyList<FoodNodeSearchResponse>> SearchAsync(string query, int limit, CancellationToken ct);
+    Task<FoodNodeResponse?> GetByIdAsync(long id, CancellationToken ct);
 }
 
 public interface IUnitRepository
 {
-    Task<IReadOnlyList<UnitResponse>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<UnitResponse>> GetAllAsync(CancellationToken ct);
 }
 
 public interface ITaxonRepository
 {
-    Task<IReadOnlyList<TaxonResponse>> GetByKindAsync(TaxonKind kind, CancellationToken ct = default);
-    Task<IReadOnlyList<TaxonResponse>> GetAllAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TaxonResponse>> GetByKindAsync(TaxonKind kind, CancellationToken ct);
+    Task<IReadOnlyList<TaxonResponse>> GetAllAsync(CancellationToken ct);
 }
 
 public sealed class SearchFoodNodesHandler(IFoodNodeRepository repo)
 {
-    public Task<IReadOnlyList<FoodNodeSearchResponse>> HandleAsync(string query, CancellationToken ct = default)
+    public Task<IReadOnlyList<FoodNodeSearchResponse>> HandleAsync(string query, CancellationToken ct)
         => repo.SearchAsync(query, 10, ct);
 }
 
 public sealed class GetFoodNodeHandler(IFoodNodeRepository repo)
 {
-    public async Task<Result<FoodNodeResponse>> HandleAsync(long id, CancellationToken ct = default)
+    public async Task<Result<FoodNodeResponse>> HandleAsync(long id, CancellationToken ct)
     {
         var node = await repo.GetByIdAsync(id, ct);
         if (node is null) return DomainErrors.NotFound.FoodNode(id);
@@ -43,12 +43,12 @@ public sealed class GetFoodNodeHandler(IFoodNodeRepository repo)
 
 public sealed class GetUnitsHandler(IUnitRepository repo)
 {
-    public Task<IReadOnlyList<UnitResponse>> HandleAsync(CancellationToken ct = default)
+    public Task<IReadOnlyList<UnitResponse>> HandleAsync(CancellationToken ct)
         => repo.GetAllAsync(ct);
 }
 
 public sealed class GetTaxonsHandler(ITaxonRepository repo)
 {
-    public Task<IReadOnlyList<TaxonResponse>> HandleAsync(TaxonKind? kind, CancellationToken ct = default)
+    public Task<IReadOnlyList<TaxonResponse>> HandleAsync(TaxonKind? kind, CancellationToken ct)
         => kind.HasValue ? repo.GetByKindAsync(kind.Value, ct) : repo.GetAllAsync(ct);
 }

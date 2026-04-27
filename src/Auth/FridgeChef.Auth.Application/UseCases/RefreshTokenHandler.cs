@@ -21,10 +21,10 @@ public sealed class RefreshTokenHandler(
     IRefreshTokenRepository refreshTokens)
 {
     public async Task<Result<AuthTokensResponse>> HandleAsync(
-        RefreshTokenRequest request, AuthClientContext ctx, CancellationToken ct = default)
+        RefreshTokenRequest request, AuthClientContext ctx, CancellationToken ct)
     {
         var tokenHash = jwt.HashRefreshToken(request.RefreshToken);
-        var stored    = await refreshTokens.GetByTokenHashAsync(tokenHash, ct);
+        var stored = await refreshTokens.GetByTokenHashAsync(tokenHash, ct);
 
         if (stored is null || stored.IsRevoked || stored.ExpiresAt < DateTime.UtcNow)
             return DomainErrors.Auth.InvalidRefreshToken;
@@ -37,7 +37,7 @@ public sealed class RefreshTokenHandler(
 
         var now = DateTime.UtcNow;
         var accessToken = jwt.GenerateAccessToken(user);
-        var rawRefresh  = jwt.GenerateRefreshToken();
+        var rawRefresh = jwt.GenerateRefreshToken();
         var rt = new RefreshToken(
             Guid.NewGuid(), user.Id,
             jwt.HashRefreshToken(rawRefresh),

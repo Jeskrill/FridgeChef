@@ -1,5 +1,4 @@
 using FridgeChef.Ontology.Infrastructure.Persistence.Entities;
-using FridgeChef.Taxonomy.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

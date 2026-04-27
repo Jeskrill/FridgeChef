@@ -1,6 +1,6 @@
-using FridgeChef.UserPreferences.Domain;
-using FridgeChef.SharedKernel;
 using FluentValidation;
+using FridgeChef.SharedKernel;
+using FridgeChef.UserPreferences.Domain;
 
 namespace FridgeChef.UserPreferences.Application.UseCases;
 
@@ -10,7 +10,7 @@ public sealed record ExcludedFoodResponse(long FoodNodeId);
 public sealed record UserDietResponse(long TaxonId);
 public sealed record UserCuisineResponse(long TaxonId);
 
-public sealed record AddAllergenRequest(long FoodNodeId, string Severity = "strict");
+public sealed record AddAllergenRequest(long FoodNodeId, string Severity);
 public sealed record AddFavoriteFoodRequest(long FoodNodeId);
 public sealed record AddExcludedFoodRequest(long FoodNodeId);
 public sealed record UpdateDietsRequest(long[] TaxonIds);
@@ -18,28 +18,28 @@ public sealed record UpdateCuisinesRequest(long[] TaxonIds);
 
 public interface IUserPreferencesRepository
 {
-    Task<IReadOnlyList<AllergenResponse>> GetAllergensAsync(Guid userId, CancellationToken ct = default);
-    Task AddAllergenAsync(Guid userId, AddAllergenRequest request, CancellationToken ct = default);
-    Task RemoveAllergenAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+    Task<IReadOnlyList<AllergenResponse>> GetAllergensAsync(Guid userId, CancellationToken ct);
+    Task AddAllergenAsync(Guid userId, AddAllergenRequest request, CancellationToken ct);
+    Task RemoveAllergenAsync(Guid userId, long foodNodeId, CancellationToken ct);
 
-    Task<IReadOnlyList<FavoriteFoodResponse>> GetFavoriteFoodsAsync(Guid userId, CancellationToken ct = default);
-    Task AddFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
-    Task RemoveFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+    Task<IReadOnlyList<FavoriteFoodResponse>> GetFavoriteFoodsAsync(Guid userId, CancellationToken ct);
+    Task AddFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct);
+    Task RemoveFavoriteFoodAsync(Guid userId, long foodNodeId, CancellationToken ct);
 
-    Task<IReadOnlyList<ExcludedFoodResponse>> GetExcludedFoodsAsync(Guid userId, CancellationToken ct = default);
-    Task AddExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
-    Task RemoveExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct = default);
+    Task<IReadOnlyList<ExcludedFoodResponse>> GetExcludedFoodsAsync(Guid userId, CancellationToken ct);
+    Task AddExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct);
+    Task RemoveExcludedFoodAsync(Guid userId, long foodNodeId, CancellationToken ct);
 
-    Task<IReadOnlyList<UserDietResponse>> GetDefaultDietsAsync(Guid userId, CancellationToken ct = default);
-    Task ReplaceDefaultDietsAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default);
+    Task<IReadOnlyList<UserDietResponse>> GetDefaultDietsAsync(Guid userId, CancellationToken ct);
+    Task ReplaceDefaultDietsAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct);
 
-    Task<IReadOnlyList<UserCuisineResponse>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct = default);
-    Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct = default);
+    Task<IReadOnlyList<UserCuisineResponse>> GetPreferredCuisinesAsync(Guid userId, CancellationToken ct);
+    Task ReplacePreferredCuisinesAsync(Guid userId, IReadOnlyList<long> taxonIds, CancellationToken ct);
 
-    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
-    Task<IReadOnlySet<long>> GetFavoriteFoodNodeIdsAsync(Guid userId, CancellationToken ct = default);
-    Task<IReadOnlySet<long>> GetDefaultDietTaxonIdsAsync(Guid userId, CancellationToken ct = default);
-    Task<IReadOnlySet<long>> GetPreferredCuisineTaxonIdsAsync(Guid userId, CancellationToken ct = default);
+    Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(Guid userId, CancellationToken ct);
+    Task<IReadOnlySet<long>> GetFavoriteFoodNodeIdsAsync(Guid userId, CancellationToken ct);
+    Task<IReadOnlySet<long>> GetDefaultDietTaxonIdsAsync(Guid userId, CancellationToken ct);
+    Task<IReadOnlySet<long>> GetPreferredCuisineTaxonIdsAsync(Guid userId, CancellationToken ct);
 }
 
 public sealed class AddAllergenValidator : AbstractValidator<AddAllergenRequest>
@@ -64,7 +64,9 @@ public sealed class UpdateDietsValidator : AbstractValidator<UpdateDietsRequest>
 {
     public UpdateDietsValidator()
     {
-        RuleFor(x => x.TaxonIds).NotNull()
+        RuleFor(x => x.TaxonIds)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
             .Must(ids => ids.All(id => id > 0))
             .Must(ids => ids.Distinct().Count() == ids.Length)
             .Must(ids => ids.Length <= 50).WithMessage("Максимум 50 диет");
@@ -74,7 +76,9 @@ public sealed class UpdateCuisinesValidator : AbstractValidator<UpdateCuisinesRe
 {
     public UpdateCuisinesValidator()
     {
-        RuleFor(x => x.TaxonIds).NotNull()
+        RuleFor(x => x.TaxonIds)
+            .Cascade(CascadeMode.Stop)
+            .NotNull()
             .Must(ids => ids.All(id => id > 0))
             .Must(ids => ids.Distinct().Count() == ids.Length)
             .Must(ids => ids.Length <= 20).WithMessage("Максимум 20 кухонных предпочтений");
@@ -83,12 +87,12 @@ public sealed class UpdateCuisinesValidator : AbstractValidator<UpdateCuisinesRe
 
 public sealed class GetAllergensHandler(IUserPreferencesRepository prefs)
 {
-    public Task<IReadOnlyList<AllergenResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<AllergenResponse>> HandleAsync(Guid userId, CancellationToken ct)
         => prefs.GetAllergensAsync(userId, ct);
 }
 public sealed class AddAllergenHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, AddAllergenRequest req, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, AddAllergenRequest req, CancellationToken ct)
     {
         await prefs.AddAllergenAsync(userId, req, ct);
         return Result.Success();
@@ -96,7 +100,7 @@ public sealed class AddAllergenHandler(IUserPreferencesRepository prefs)
 }
 public sealed class RemoveAllergenHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, long foodNodeId, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, long foodNodeId, CancellationToken ct)
     {
         await prefs.RemoveAllergenAsync(userId, foodNodeId, ct);
         return Result.Success();
@@ -104,12 +108,12 @@ public sealed class RemoveAllergenHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetFavoriteFoodsHandler(IUserPreferencesRepository prefs)
 {
-    public Task<IReadOnlyList<FavoriteFoodResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<FavoriteFoodResponse>> HandleAsync(Guid userId, CancellationToken ct)
         => prefs.GetFavoriteFoodsAsync(userId, ct);
 }
 public sealed class AddFavoriteFoodHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, AddFavoriteFoodRequest req, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, AddFavoriteFoodRequest req, CancellationToken ct)
     {
         await prefs.AddFavoriteFoodAsync(userId, req.FoodNodeId, ct);
         return Result.Success();
@@ -117,7 +121,7 @@ public sealed class AddFavoriteFoodHandler(IUserPreferencesRepository prefs)
 }
 public sealed class RemoveFavoriteFoodHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, long foodNodeId, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, long foodNodeId, CancellationToken ct)
     {
         await prefs.RemoveFavoriteFoodAsync(userId, foodNodeId, ct);
         return Result.Success();
@@ -125,12 +129,12 @@ public sealed class RemoveFavoriteFoodHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetExcludedFoodsHandler(IUserPreferencesRepository prefs)
 {
-    public Task<IReadOnlyList<ExcludedFoodResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<ExcludedFoodResponse>> HandleAsync(Guid userId, CancellationToken ct)
         => prefs.GetExcludedFoodsAsync(userId, ct);
 }
 public sealed class AddExcludedFoodHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, AddExcludedFoodRequest req, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, AddExcludedFoodRequest req, CancellationToken ct)
     {
         await prefs.AddExcludedFoodAsync(userId, req.FoodNodeId, ct);
         return Result.Success();
@@ -138,7 +142,7 @@ public sealed class AddExcludedFoodHandler(IUserPreferencesRepository prefs)
 }
 public sealed class RemoveExcludedFoodHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, long foodNodeId, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, long foodNodeId, CancellationToken ct)
     {
         await prefs.RemoveExcludedFoodAsync(userId, foodNodeId, ct);
         return Result.Success();
@@ -146,12 +150,12 @@ public sealed class RemoveExcludedFoodHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetDietsHandler(IUserPreferencesRepository prefs)
 {
-    public Task<IReadOnlyList<UserDietResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<UserDietResponse>> HandleAsync(Guid userId, CancellationToken ct)
         => prefs.GetDefaultDietsAsync(userId, ct);
 }
 public sealed class UpdateDietsHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, UpdateDietsRequest req, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, UpdateDietsRequest req, CancellationToken ct)
     {
         await prefs.ReplaceDefaultDietsAsync(userId, req.TaxonIds.Distinct().ToArray(), ct);
         return Result.Success();
@@ -159,12 +163,12 @@ public sealed class UpdateDietsHandler(IUserPreferencesRepository prefs)
 }
 public sealed class GetCuisinesHandler(IUserPreferencesRepository prefs)
 {
-    public Task<IReadOnlyList<UserCuisineResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<UserCuisineResponse>> HandleAsync(Guid userId, CancellationToken ct)
         => prefs.GetPreferredCuisinesAsync(userId, ct);
 }
 public sealed class UpdateCuisinesHandler(IUserPreferencesRepository prefs)
 {
-    public async Task<Result> HandleAsync(Guid userId, UpdateCuisinesRequest req, CancellationToken ct = default)
+    public async Task<Result> HandleAsync(Guid userId, UpdateCuisinesRequest req, CancellationToken ct)
     {
         await prefs.ReplacePreferredCuisinesAsync(userId, req.TaxonIds.Distinct().ToArray(), ct);
         return Result.Success();

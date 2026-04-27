@@ -6,9 +6,7 @@
     <ProjectReference Include="..\..\Admin\FridgeChef.Admin.Application\FridgeChef.Admin.Application.csproj" />
     <ProjectReference Include="..\FridgeChef.Ontology.Application\FridgeChef.Ontology.Application.csproj" />
     <ProjectReference Include="..\FridgeChef.Ontology.Domain\FridgeChef.Ontology.Domain.csproj" />
-    <ProjectReference Include="..\..\Taxonomy\FridgeChef.Taxonomy.Domain\FridgeChef.Taxonomy.Domain.csproj" />
     <ProjectReference Include="..\..\Catalog\FridgeChef.Catalog.Application\FridgeChef.Catalog.Application.csproj" />
-    <ProjectReference Include="..\..\Pantry\FridgeChef.Pantry.Domain\FridgeChef.Pantry.Domain.csproj" />
     <ProjectReference Include="..\..\Shared\FridgeChef.SharedKernel\FridgeChef.SharedKernel.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -1,6 +1,6 @@
-using FridgeChef.Pantry.Application.UseCases;
-using FridgeChef.Api.Middleware;
 using FluentValidation;
+using FridgeChef.Api.Middleware;
+using FridgeChef.Pantry.Application.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Pantry;

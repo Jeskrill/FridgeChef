@@ -4,7 +4,8 @@ public enum RecipeStatus
 {
     Draft = 0,
     Published = 1,
-    Hidden = 2
+    Hidden = 2,
+    Archived = 3
 }
 
 public enum MediaKind
@@ -119,3 +120,5 @@ public sealed record RecipeAllergen(
     Guid RecipeId,
     long AllergenNodeId,
     int EvidenceIngredientCount);
+
+public sealed record RecipeSummary(Guid Id, string Slug, string Title, string? ImageUrl);

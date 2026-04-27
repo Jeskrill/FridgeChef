@@ -15,7 +15,7 @@ internal sealed class RecipeRepository : IRecipeRepository
 
     public RecipeRepository(CatalogDbContext db) => _db = db;
 
-    public async Task<RecipeDetailResponse?> GetDetailBySlugAsync(string slug, CancellationToken ct = default)
+    public async Task<RecipeDetailResponse?> GetDetailBySlugAsync(string slug, CancellationToken ct)
     {
         var entity = await _db.Recipes
             .AsSplitQuery()
@@ -36,15 +36,18 @@ internal sealed class RecipeRepository : IRecipeRepository
         string? query,
         long[]? dietIds,
         long[]? cuisineIds,
+        string? cuisineName,
+        int? maxTimeMin,
+        decimal? maxKcal,
         PagedRequest paging,
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
         var q = _db.Recipes.Where(r => r.Status == "published");
 
         if (!string.IsNullOrWhiteSpace(query))
         {
-            var normalized = query.Trim().ToLowerInvariant();
-            q = q.Where(r => EF.Functions.ILike(r.Title, $"%{normalized}%"));
+            var pattern = LikeHelper.ContainsPattern(query.Trim().ToLowerInvariant());
+            q = q.Where(r => EF.Functions.ILike(r.Title, pattern, LikeHelper.EscapeCharacter));
         }
 
         if (dietIds is { Length: > 0 })
@@ -52,6 +55,23 @@ internal sealed class RecipeRepository : IRecipeRepository
 
         if (cuisineIds is { Length: > 0 })
             q = q.Where(r => r.RecipeTaxons.Any(rt => cuisineIds.Contains(rt.TaxonId)));
+
+        if (!string.IsNullOrWhiteSpace(cuisineName))
+        {
+            var trimmedName = cuisineName.Trim();
+            q = q.Where(r => r.RecipeTaxons.Any(rt =>
+                _db.Database.SqlQueryRaw<long>(
+                    "SELECT id AS \"Value\" FROM ontology.taxons WHERE kind = 'cuisine' AND name ILIKE {0}",
+                    trimmedName)
+                .Any(tid => tid == rt.TaxonId)));
+        }
+
+        if (maxTimeMin.HasValue)
+            q = q.Where(r => r.TotalTimeMin != null && r.TotalTimeMin <= maxTimeMin.Value);
+
+        if (maxKcal.HasValue)
+            q = q.Where(r => r.Nutrition != null && r.Nutrition.KcalPerServing != null &&
+                             r.Nutrition.KcalPerServing <= maxKcal.Value);
 
         var totalCount = await q.CountAsync(ct);
 
@@ -69,7 +89,7 @@ internal sealed class RecipeRepository : IRecipeRepository
         return new PagedResult<RecipeCardResponse>(cards, totalCount, paging.EffectivePage, paging.EffectivePageSize);
     }
 
-    public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<Recipe?> GetByIdAsync(Guid id, CancellationToken ct)
     {
         var entity = await _db.Recipes
             .AsSplitQuery()
@@ -88,7 +108,7 @@ internal sealed class RecipeRepository : IRecipeRepository
         long[]? excludeAllergenNodeIds,
         long[]? dietFilterTaxonIds,
         int limit,
-        CancellationToken ct = default)
+        CancellationToken ct)
     {
         var idsArray = foodNodeIds.ToArray();
 
@@ -121,17 +141,19 @@ internal sealed class RecipeRepository : IRecipeRepository
         return entities.Select(e => e.ToDomain()).ToList();
     }
 
-    public Task<int> CountAsync(CancellationToken ct = default) =>
+    public Task<int> CountAsync(CancellationToken ct) =>
         _db.Recipes.CountAsync(ct);
 
     public async Task<IReadOnlyList<RecipeSummary>> GetSummariesByIdsAsync(
-        IReadOnlyList<Guid> ids, CancellationToken ct = default)
+        IReadOnlyList<Guid> ids, CancellationToken ct)
     {
         var result = await _db.Recipes
             .Where(r => ids.Contains(r.Id))
             .Select(r => new
             {
-                r.Id, r.Slug, r.Title,
+                r.Id,
+                r.Slug,
+                r.Title,
                 ImageUrl = r.Media
                     .Where(m => m.MediaKind == "hero")
                     .Select(m => m.Url)
@@ -143,7 +165,7 @@ internal sealed class RecipeRepository : IRecipeRepository
             .ToList();
     }
 
-    public async Task UpdateStatusAsync(Guid id, RecipeStatus status, CancellationToken ct = default)
+    public async Task UpdateStatusAsync(Guid id, RecipeStatus status, CancellationToken ct)
     {
         await _db.Recipes
             .Where(r => r.Id == id)

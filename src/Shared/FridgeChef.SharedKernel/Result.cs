@@ -40,11 +40,8 @@ public sealed class Result<TValue>
         ? _error
         : throw new InvalidOperationException("Cannot access Error on a successful result.");
 
-    public static Result<TValue> Success(TValue value) => new(value);
-    public static Result<TValue> Failure(DomainError error) => new(error);
-
-    public static implicit operator Result<TValue>(TValue value) => Success(value);
-    public static implicit operator Result<TValue>(DomainError error) => Failure(error);
+    public static implicit operator Result<TValue>(TValue value) => new(value);
+    public static implicit operator Result<TValue>(DomainError error) => new(error);
 
     public TResult Match<TResult>(
         Func<TValue, TResult> success,

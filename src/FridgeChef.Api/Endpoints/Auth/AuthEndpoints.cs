@@ -1,7 +1,7 @@
-using FridgeChef.Auth.Application.UseCases;
-using FridgeChef.Auth.Application.Dto;
-using FridgeChef.Api.Middleware;
 using FluentValidation;
+using FridgeChef.Api.Middleware;
+using FridgeChef.Auth.Application.Dto;
+using FridgeChef.Auth.Application.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Auth;

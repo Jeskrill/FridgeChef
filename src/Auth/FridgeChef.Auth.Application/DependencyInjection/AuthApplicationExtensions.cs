@@ -1,5 +1,5 @@
-using FridgeChef.Auth.Application.UseCases;
 using FluentValidation;
+using FridgeChef.Auth.Application.UseCases;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FridgeChef.Auth.Application.DependencyInjection;

@@ -16,12 +16,12 @@ internal sealed class TagDescriptionsDocumentFilter : IDocumentFilter
 
             - `GET /recipes` — каталог с фильтрами (диета, кухня, время, калории)
             - `GET /recipes/{slug}` — карточка рецепта с шагами и ингредиентами
-            - `POST /recipes/search` — подбор рецептов по содержимому холодильника
+            - `POST /recipes/matches` — подбор рецептов по содержимому холодильника
             """,
 
         ["Pantry"] = """
             Холодильник пользователя — список продуктов с количеством.
-            Данные используются при подборе рецептов (`POST /recipes/search`).
+            Данные используются при подборе рецептов (`POST /recipes/matches`).
             """,
 
         ["Favorites"] = "Избранные рецепты пользователя.",

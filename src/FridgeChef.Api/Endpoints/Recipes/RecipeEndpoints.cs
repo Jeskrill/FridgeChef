@@ -1,10 +1,10 @@
+using FluentValidation;
+using FridgeChef.Api.Middleware;
 using FridgeChef.Catalog.Application.Dto;
 using FridgeChef.Catalog.Application.UseCases.GetCatalog;
 using FridgeChef.Catalog.Application.UseCases.GetRecipeDetail;
 using FridgeChef.Catalog.Application.UseCases.MatchFromPantry;
-using FridgeChef.Api.Middleware;
 using FridgeChef.SharedKernel;
-using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.OpenApi.Models;
 
@@ -26,22 +26,24 @@ internal static class RecipeEndpoints
             [FromQuery(Name = "cuisineName")] string? cuisineName,
             [FromQuery(Name = "maxTime")] int? maxTime,
             [FromQuery(Name = "maxCal")] decimal? maxCal,
-            [FromQuery(Name = "page")] int page = 1,
-            [FromQuery(Name = "pageSize")] int pageSize = 20,
-            CancellationToken ct = default) =>
+            [FromQuery(Name = "page")] int? page,
+            [FromQuery(Name = "pageSize")] int? pageSize,
+            CancellationToken ct) =>
         {
-            var invalidDietIds    = diet?.Any(id => id <= 0) == true;
+            var invalidDietIds = diet?.Any(id => id <= 0) == true;
             var invalidCuisineIds = cuisine?.Any(id => id <= 0) == true;
             if (invalidDietIds || invalidCuisineIds)
             {
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                 {
-                    ["ids"] = ["Diet and cuisine IDs must be positive."]
+                    ["ids"] = ["ID диет и кухонь должны быть положительными."]
                 });
             }
 
-            var clampedPage     = Math.Max(1, page);
-            var clampedPageSize = Math.Clamp(pageSize < 1 ? 20 : pageSize, 1, MaxPageSize);
+            var requestedPage = page.GetValueOrDefault(1);
+            var requestedPageSize = pageSize.GetValueOrDefault(20);
+            var clampedPage = Math.Max(1, requestedPage);
+            var clampedPageSize = Math.Clamp(requestedPageSize < 1 ? 20 : requestedPageSize, 1, MaxPageSize);
 
             var request = new GetCatalogRequest(
                 q?.Trim(),

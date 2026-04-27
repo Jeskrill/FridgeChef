@@ -1,6 +1,7 @@
 using FridgeChef.Admin.Application.UseCases;
 using FridgeChef.Ontology.Infrastructure.Persistence.Configurations;
 using FridgeChef.Ontology.Infrastructure.Persistence.Entities;
+using FridgeChef.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
 namespace FridgeChef.Ontology.Infrastructure.Persistence;
@@ -11,14 +12,14 @@ internal sealed class AdminIngredientAdapter : IAdminIngredientReader, IAdminIng
     public AdminIngredientAdapter(OntologyDbContext db) => _db = db;
 
     public async Task<AdminIngredientListResponse> GetPagedAsync(
-        string? query, int page, int pageSize, CancellationToken ct = default)
+        string? query, int page, int pageSize, CancellationToken ct)
     {
         var q = _db.FoodNodes.Where(n => n.Status != "deprecated");
 
         if (!string.IsNullOrWhiteSpace(query))
         {
-            var normalized = query.Trim().ToLowerInvariant();
-            q = q.Where(n => EF.Functions.ILike(n.CanonicalName, $"%{normalized}%"));
+            var pattern = LikeHelper.ContainsPattern(query.Trim().ToLowerInvariant());
+            q = q.Where(n => EF.Functions.ILike(n.CanonicalName, pattern, LikeHelper.EscapeCharacter));
         }
 
         var totalCount = await q.CountAsync(ct);
@@ -43,7 +44,7 @@ internal sealed class AdminIngredientAdapter : IAdminIngredientReader, IAdminIng
         return new AdminIngredientListResponse(items, totalCount, page, pageSize);
     }
 
-    public async Task<AdminIngredientResponse?> GetByIdAsync(long id, CancellationToken ct = default)
+    public async Task<AdminIngredientResponse?> GetByIdAsync(long id, CancellationToken ct)
     {
         var e = await _db.FoodNodes.FirstOrDefaultAsync(n => n.Id == id, ct);
         if (e is null) return null;
@@ -58,7 +59,7 @@ internal sealed class AdminIngredientAdapter : IAdminIngredientReader, IAdminIng
         return new AdminIngredientResponse(e.Id, e.CanonicalName, e.Slug, e.NodeKind, e.Status, unitName, e.DefaultUnitId, e.CreatedAt);
     }
 
-    public async Task<AdminIngredientResponse> CreateAsync(CreateIngredientRequest req, CancellationToken ct = default)
+    public async Task<AdminIngredientResponse> CreateAsync(CreateIngredientRequest req, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
         var slug = ToSlug(req.CanonicalName);
@@ -79,7 +80,7 @@ internal sealed class AdminIngredientAdapter : IAdminIngredientReader, IAdminIng
         return new AdminIngredientResponse(entity.Id, entity.CanonicalName, entity.Slug, entity.NodeKind, entity.Status, null, entity.DefaultUnitId, entity.CreatedAt);
     }
 
-    public async Task<AdminIngredientResponse?> UpdateAsync(long id, UpdateIngredientRequest req, CancellationToken ct = default)
+    public async Task<AdminIngredientResponse?> UpdateAsync(long id, UpdateIngredientRequest req, CancellationToken ct)
     {
         var entity = await _db.FoodNodes.FirstOrDefaultAsync(n => n.Id == id, ct);
         if (entity is null) return null;
@@ -100,7 +101,7 @@ internal sealed class AdminIngredientAdapter : IAdminIngredientReader, IAdminIng
         return new AdminIngredientResponse(entity.Id, entity.CanonicalName, entity.Slug, entity.NodeKind, entity.Status, null, entity.DefaultUnitId, entity.CreatedAt);
     }
 
-    public async Task<bool> DeleteAsync(long id, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(long id, CancellationToken ct)
     {
 
         var affected = await _db.FoodNodes
@@ -122,7 +123,7 @@ internal sealed class AdminTaxonAdapter : IAdminTaxonReader, IAdminTaxonWriter
     private readonly OntologyDbContext _db;
     public AdminTaxonAdapter(OntologyDbContext db) => _db = db;
 
-    public async Task<AdminTaxonListResponse> GetAllAsync(string? kind, CancellationToken ct = default)
+    public async Task<AdminTaxonListResponse> GetAllAsync(string? kind, CancellationToken ct)
     {
         var q = _db.Taxons.AsQueryable();
         if (!string.IsNullOrWhiteSpace(kind))
@@ -157,7 +158,7 @@ internal sealed class AdminTaxonAdapter : IAdminTaxonReader, IAdminTaxonWriter
         return new AdminTaxonListResponse(items, items.Count);
     }
 
-    public async Task<AdminTaxonResponse?> GetByIdAsync(long id, CancellationToken ct = default)
+    public async Task<AdminTaxonResponse?> GetByIdAsync(long id, CancellationToken ct)
     {
         var e = await _db.Taxons.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (e is null) return null;
@@ -170,7 +171,7 @@ internal sealed class AdminTaxonAdapter : IAdminTaxonReader, IAdminTaxonWriter
         return new AdminTaxonResponse(e.Id, FormatKind(e.Kind), e.Name, e.Slug, e.Description, recipeCount);
     }
 
-    public async Task<AdminTaxonResponse> CreateAsync(CreateTaxonRequest req, CancellationToken ct = default)
+    public async Task<AdminTaxonResponse> CreateAsync(CreateTaxonRequest req, CancellationToken ct)
     {
         var slug = req.Name.Trim().ToLowerInvariant().Replace(" ", "-");
         var entity = new TaxonEntity
@@ -186,7 +187,7 @@ internal sealed class AdminTaxonAdapter : IAdminTaxonReader, IAdminTaxonWriter
         return new AdminTaxonResponse(entity.Id, FormatKind(entity.Kind), entity.Name, entity.Slug, entity.Description, 0);
     }
 
-    public async Task<AdminTaxonResponse?> UpdateAsync(long id, UpdateTaxonRequest req, CancellationToken ct = default)
+    public async Task<AdminTaxonResponse?> UpdateAsync(long id, UpdateTaxonRequest req, CancellationToken ct)
     {
         var entity = await _db.Taxons.FirstOrDefaultAsync(t => t.Id == id, ct);
         if (entity is null) return null;
@@ -204,7 +205,7 @@ internal sealed class AdminTaxonAdapter : IAdminTaxonReader, IAdminTaxonWriter
         return new AdminTaxonResponse(entity.Id, FormatKind(entity.Kind), entity.Name, entity.Slug, entity.Description, 0);
     }
 
-    public async Task<bool> DeleteAsync(long id, CancellationToken ct = default)
+    public async Task<bool> DeleteAsync(long id, CancellationToken ct)
     {
         var affected = await _db.Taxons
             .Where(t => t.Id == id)
@@ -216,8 +217,7 @@ internal sealed class AdminTaxonAdapter : IAdminTaxonReader, IAdminTaxonWriter
         dbKind.Replace("_", " ").Trim();
 
     private static string ToSnakeCase(string name) =>
-        string.Concat(name.Select((c, i) =>
-            i > 0 && char.IsUpper(c) ? "_" + char.ToLower(c) : char.ToLower(c).ToString()));
+        System.Text.Json.JsonNamingPolicy.SnakeCaseLower.ConvertName(name);
 }
 
 internal sealed class TaxonRecipeCount

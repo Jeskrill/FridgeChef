@@ -27,13 +27,15 @@ internal static class AdminEndpoints
     {
         group.MapGet("/users", async (
             [FromQuery(Name = "q")] string? q,
-            [FromQuery(Name = "page")] int page = 1,
-            [FromQuery(Name = "pageSize")] int pageSize = 25,
-            [FromServices] GetAdminUsersHandler handler = default!,
-            CancellationToken ct = default) =>
+            [FromQuery(Name = "page")] int? page,
+            [FromQuery(Name = "pageSize")] int? pageSize,
+            [FromServices] GetAdminUsersHandler handler,
+            CancellationToken ct) =>
         {
-            var clampedPage     = Math.Max(1, page);
-            var clampedPageSize = Math.Clamp(pageSize < 1 ? DefaultPageSize : pageSize, 1, MaxPageSize);
+            var requestedPage = page.GetValueOrDefault(1);
+            var requestedPageSize = pageSize.GetValueOrDefault(DefaultPageSize);
+            var clampedPage = Math.Max(1, requestedPage);
+            var clampedPageSize = Math.Clamp(requestedPageSize < 1 ? DefaultPageSize : requestedPageSize, 1, MaxPageSize);
             var result = await handler.HandleAsync(q?.Trim(), clampedPage, clampedPageSize, ct);
             return Results.Ok(result);
         })
@@ -68,13 +70,15 @@ internal static class AdminEndpoints
     {
         group.MapGet("/recipes", async (
             [FromQuery(Name = "q")] string? q,
-            [FromQuery(Name = "page")] int page = 1,
-            [FromQuery(Name = "pageSize")] int pageSize = 25,
-            [FromServices] GetAdminRecipesHandler handler = default!,
-            CancellationToken ct = default) =>
+            [FromQuery(Name = "page")] int? page,
+            [FromQuery(Name = "pageSize")] int? pageSize,
+            [FromServices] GetAdminRecipesHandler handler,
+            CancellationToken ct) =>
         {
-            var clampedPage     = Math.Max(1, page);
-            var clampedPageSize = Math.Clamp(pageSize < 1 ? DefaultPageSize : pageSize, 1, MaxPageSize);
+            var requestedPage = page.GetValueOrDefault(1);
+            var requestedPageSize = pageSize.GetValueOrDefault(DefaultPageSize);
+            var clampedPage = Math.Max(1, requestedPage);
+            var clampedPageSize = Math.Clamp(requestedPageSize < 1 ? DefaultPageSize : requestedPageSize, 1, MaxPageSize);
             return Results.Ok(await handler.HandleAsync(q?.Trim(), clampedPage, clampedPageSize, ct));
         })
         .Produces<AdminRecipeListResponse>()
@@ -126,13 +130,15 @@ internal static class AdminEndpoints
     {
         group.MapGet("/ingredients", async (
             [FromQuery(Name = "q")] string? q,
-            [FromQuery(Name = "page")] int page = 1,
-            [FromQuery(Name = "pageSize")] int pageSize = 25,
-            [FromServices] GetAdminIngredientsHandler handler = default!,
-            CancellationToken ct = default) =>
+            [FromQuery(Name = "page")] int? page,
+            [FromQuery(Name = "pageSize")] int? pageSize,
+            [FromServices] GetAdminIngredientsHandler handler,
+            CancellationToken ct) =>
         {
-            var clampedPage     = Math.Max(1, page);
-            var clampedPageSize = Math.Clamp(pageSize < 1 ? DefaultPageSize : pageSize, 1, MaxPageSize);
+            var requestedPage = page.GetValueOrDefault(1);
+            var requestedPageSize = pageSize.GetValueOrDefault(DefaultPageSize);
+            var clampedPage = Math.Max(1, requestedPage);
+            var clampedPageSize = Math.Clamp(requestedPageSize < 1 ? DefaultPageSize : requestedPageSize, 1, MaxPageSize);
             return Results.Ok(await handler.HandleAsync(q?.Trim(), clampedPage, clampedPageSize, ct));
         })
         .Produces<AdminIngredientListResponse>()
@@ -198,8 +204,8 @@ internal static class AdminEndpoints
     {
         group.MapGet("/taxons", async (
             [FromQuery(Name = "kind")] string? kind,
-            [FromServices] GetAdminTaxonsHandler handler = default!,
-            CancellationToken ct = default) =>
+            [FromServices] GetAdminTaxonsHandler handler,
+            CancellationToken ct) =>
         {
             return Results.Ok(await handler.HandleAsync(kind?.Trim(), ct));
         })

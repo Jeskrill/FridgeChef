@@ -45,10 +45,10 @@ internal sealed class FoodHierarchySupplierAdapter : IFoodHierarchySupplier
         _hierarchy = hierarchy;
 
     public Task<IReadOnlySet<long>> ExpandDescendantsAsync(
-        IEnumerable<long> foodNodeIds, CancellationToken ct = default) =>
+        IEnumerable<long> foodNodeIds, CancellationToken ct) =>
         _hierarchy.ExpandDescendantsAsync(foodNodeIds, ct);
 
     public Task<IReadOnlySet<long>> GetAllergenFoodNodeIdsAsync(
-        IEnumerable<long> allergenNodeIds, CancellationToken ct = default) =>
+        IEnumerable<long> allergenNodeIds, CancellationToken ct) =>
         _hierarchy.GetAllergenFoodNodeIdsAsync(allergenNodeIds, ct);
 }

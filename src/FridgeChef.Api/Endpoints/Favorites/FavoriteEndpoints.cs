@@ -1,6 +1,6 @@
-using FridgeChef.Favorites.Application.UseCases;
-using FridgeChef.Catalog.Application.Dto;
 using FridgeChef.Api.Middleware;
+using FridgeChef.Catalog.Application.Dto;
+using FridgeChef.Favorites.Application.UseCases;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Favorites;

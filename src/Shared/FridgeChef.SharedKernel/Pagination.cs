@@ -1,6 +1,6 @@
 namespace FridgeChef.SharedKernel;
 
-public sealed record PagedRequest(int Page = 1, int PageSize = 20)
+public sealed record PagedRequest(int Page, int PageSize)
 {
 
     public const int MaxPageSize = 50;
@@ -21,7 +21,4 @@ public sealed record PagedResult<T>(
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
     public bool HasNextPage => Page < TotalPages;
     public bool HasPreviousPage => Page > 1;
-
-    public static PagedResult<T> Empty(int page, int pageSize) =>
-        new(Array.Empty<T>(), 0, page, pageSize);
 }

@@ -1,6 +1,6 @@
+using FluentValidation;
 using FridgeChef.Auth.Domain;
 using FridgeChef.SharedKernel;
-using FluentValidation;
 
 namespace FridgeChef.Auth.Application.UseCases;
 
@@ -14,22 +14,24 @@ public sealed record ChangePasswordRequest(string OldPassword, string NewPasswor
 public interface IUserRepository
 {
 
-    Task<UserProfileResponse?> GetProfileByIdAsync(Guid id, CancellationToken ct = default);
+    Task<UserProfileResponse?> GetProfileByIdAsync(Guid id, CancellationToken ct);
 
-    Task<User?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
-    Task<bool> EmailExistsAsync(string email, CancellationToken ct = default);
-    Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct = default);
-    Task AddAsync(User user, CancellationToken ct = default);
-    Task UpdateAsync(User user, CancellationToken ct = default);
+    Task<User?> GetByIdAsync(Guid id, CancellationToken ct);
+    Task<User?> GetByEmailAsync(string email, CancellationToken ct);
+    Task<bool> EmailExistsAsync(string email, CancellationToken ct);
+    Task<int> CountAsync(CancellationToken ct);
+    Task<IReadOnlyList<User>> GetAllAsync(CancellationToken ct);
+    Task<(IReadOnlyList<User> Users, int TotalCount)> GetPagedAsync(string? query, int page, int pageSize, CancellationToken ct);
+    Task AddAsync(User user, CancellationToken ct);
+    Task UpdateAsync(User user, CancellationToken ct);
 }
 
 public interface IRefreshTokenRepository
 {
-    Task<RefreshToken?> GetByTokenHashAsync(string tokenHash, CancellationToken ct = default);
-    Task AddAsync(RefreshToken token, CancellationToken ct = default);
-    Task RevokeAsync(Guid tokenId, CancellationToken ct = default);
-    Task RevokeAllForUserAsync(Guid userId, CancellationToken ct = default);
+    Task<RefreshToken?> GetByTokenHashAsync(string tokenHash, CancellationToken ct);
+    Task AddAsync(RefreshToken token, CancellationToken ct);
+    Task RevokeAsync(Guid tokenId, CancellationToken ct);
+    Task RevokeAllForUserAsync(Guid userId, CancellationToken ct);
 }
 
 public sealed class UpdateProfileValidator : AbstractValidator<UpdateProfileRequest>
@@ -56,7 +58,7 @@ public sealed class ChangePasswordValidator : AbstractValidator<ChangePasswordRe
 
 public sealed class GetProfileHandler(IUserRepository users)
 {
-    public async Task<Result<UserProfileResponse>> HandleAsync(Guid userId, CancellationToken ct = default)
+    public async Task<Result<UserProfileResponse>> HandleAsync(Guid userId, CancellationToken ct)
     {
         var profile = await users.GetProfileByIdAsync(userId, ct);
         if (profile is null) return DomainErrors.NotFound.User(userId);
@@ -67,40 +69,55 @@ public sealed class GetProfileHandler(IUserRepository users)
 public sealed class UpdateProfileHandler(IUserRepository users)
 {
     public async Task<Result<UserProfileResponse>> HandleAsync(
-        Guid userId, UpdateProfileRequest request, CancellationToken ct = default)
+        Guid userId, UpdateProfileRequest request, CancellationToken ct)
     {
         var user = await users.GetByIdAsync(userId, ct);
         if (user is null) return DomainErrors.NotFound.User(userId);
 
-        if (request.Email is not null && await users.EmailExistsAsync(request.Email, ct))
+        var normalizedEmail = request.Email is not null
+            ? NormalizeEmail(request.Email)
+            : user.Email;
+
+        if (request.Email is not null &&
+            !string.Equals(normalizedEmail, user.Email, StringComparison.OrdinalIgnoreCase) &&
+            await users.EmailExistsAsync(normalizedEmail, ct))
             return DomainErrors.Auth.EmailAlreadyExists;
 
-        var updated = user with {
-            DisplayName = request.DisplayName ?? user.DisplayName,
-            Email = request.Email ?? user.Email,
+        var updated = user with
+        {
+            DisplayName = request.DisplayName?.Trim() ?? user.DisplayName,
+            Email = normalizedEmail,
             UpdatedAt = DateTime.UtcNow
         };
         await users.UpdateAsync(updated, ct);
 
         return new UserProfileResponse(updated.Id, updated.DisplayName, updated.Email, updated.AvatarUrl, updated.Role, updated.CreatedAt);
     }
+
+    private static string NormalizeEmail(string email) =>
+        email.Trim().ToLowerInvariant();
 }
 
-public sealed class ChangePasswordHandler(IUserRepository users, IPasswordHasher hasher)
+public sealed class ChangePasswordHandler(
+    IUserRepository users,
+    IPasswordHasher hasher,
+    IRefreshTokenRepository refreshTokens)
 {
     public async Task<Result> HandleAsync(
-        Guid userId, ChangePasswordRequest request, CancellationToken ct = default)
+        Guid userId, ChangePasswordRequest request, CancellationToken ct)
     {
         var user = await users.GetByIdAsync(userId, ct);
         if (user is null) return DomainErrors.NotFound.User(userId);
         if (!hasher.Verify(request.OldPassword, user.PasswordHash))
-            return DomainErrors.Auth.InvalidCredentials;
+            return DomainErrors.Auth.WrongPassword;
 
-        var updated = user with {
+        var updated = user with
+        {
             PasswordHash = hasher.Hash(request.NewPassword),
             UpdatedAt = DateTime.UtcNow
         };
         await users.UpdateAsync(updated, ct);
+        await refreshTokens.RevokeAllForUserAsync(userId, ct);
         return Result.Success();
     }
 }

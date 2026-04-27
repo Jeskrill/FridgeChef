@@ -1,7 +1,7 @@
-using FridgeChef.Ontology.Application.UseCases;
-using FridgeChef.Catalog.Application.Dto;
 using FridgeChef.Api.Middleware;
-using FridgeChef.Taxonomy.Domain;
+using FridgeChef.Catalog.Application.Dto;
+using FridgeChef.Ontology.Application.UseCases;
+using FridgeChef.Ontology.Domain;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FridgeChef.Api.Endpoints.Reference;
@@ -60,7 +60,7 @@ internal static class ReferenceEndpoints
             **Использование:**
             Полученные `id` таксонов передаются в:
             - `GET /recipes?diet[]=123&cuisine[]=456` — фильтрация каталога
-            - `POST /recipes/search` с `dietFilterIds` — подбор из холодильника
+            - `POST /recipes/matches` с `dietFilterIds` — подбор из холодильника
             - `PUT /settings/diets` — диеты по умолчанию пользователя
 
             Этот эндпоинт открытый, авторизация не нужна.

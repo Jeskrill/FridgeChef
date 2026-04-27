@@ -1,7 +1,7 @@
+using FluentValidation;
 using FridgeChef.Auth.Application.Dto;
 using FridgeChef.Auth.Domain;
 using FridgeChef.SharedKernel;
-using FluentValidation;
 
 namespace FridgeChef.Auth.Application.UseCases;
 
@@ -24,21 +24,23 @@ public sealed class RegisterHandler(
     IRefreshTokenRepository refreshTokens)
 {
     public async Task<Result<AuthTokensResponse>> HandleAsync(
-        RegisterRequest request, AuthClientContext ctx, CancellationToken ct = default)
+        RegisterRequest request, AuthClientContext ctx, CancellationToken ct)
     {
-        if (await users.EmailExistsAsync(request.Email, ct))
+        var normalizedEmail = NormalizeEmail(request.Email);
+
+        if (await users.EmailExistsAsync(normalizedEmail, ct))
             return DomainErrors.Auth.EmailAlreadyExists;
 
         var now = DateTime.UtcNow;
         var user = new User(
-            Guid.NewGuid(), request.Email,
+            Guid.NewGuid(), normalizedEmail,
             hasher.Hash(request.Password),
-            request.DisplayName, null,
+            request.DisplayName.Trim(), null,
             "user", false, null, now, now);
         await users.AddAsync(user, ct);
 
         var accessToken = jwt.GenerateAccessToken(user);
-        var rawRefresh  = jwt.GenerateRefreshToken();
+        var rawRefresh = jwt.GenerateRefreshToken();
         var rt = new RefreshToken(
             Guid.NewGuid(), user.Id,
             jwt.HashRefreshToken(rawRefresh),
@@ -47,4 +49,7 @@ public sealed class RegisterHandler(
 
         return new AuthTokensResponse(accessToken, rawRefresh, rt.ExpiresAt);
     }
+
+    private static string NormalizeEmail(string email) =>
+        email.Trim().ToLowerInvariant();
 }

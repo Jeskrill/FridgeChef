@@ -1,7 +1,7 @@
 using FridgeChef.SharedKernel;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace FridgeChef.Api.Middleware;
@@ -80,7 +80,10 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
 
 internal static class ResultExtensions
 {
-    public static IResult ToHttpResult<T>(this Result<T> result, int successStatus = StatusCodes.Status200OK) =>
+    public static IResult ToHttpResult<T>(this Result<T> result) =>
+        result.ToHttpResult(StatusCodes.Status200OK);
+
+    public static IResult ToHttpResult<T>(this Result<T> result, int successStatus) =>
         result.IsSuccess
             ? Results.Json(result.Value, statusCode: successStatus)
             : result.Error.ToHttpResult();
@@ -93,17 +96,18 @@ internal static class ResultExtensions
     private static IResult ToHttpResult(this DomainError error) =>
         error.Code switch
         {
-            var c when c.StartsWith("NOT_FOUND") => Results.Problem(
+            var c when c.StartsWith("NOT_FOUND", StringComparison.Ordinal) => Results.Problem(
                 statusCode: StatusCodes.Status404NotFound,
                 title: "Не найдено",
                 detail: error.Message),
 
-            "AUTH_BLOCKED" => Results.Problem(
+            "AUTH_ACCOUNT_BLOCKED" => Results.Problem(
                 statusCode: StatusCodes.Status403Forbidden,
                 title: "Доступ запрещён",
                 detail: error.Message),
 
-            var c when c.StartsWith("AUTH_INVALID") || c.StartsWith("AUTH_WRONG") =>
+            var c when c.StartsWith("AUTH_INVALID", StringComparison.Ordinal) ||
+                       c.StartsWith("AUTH_WRONG", StringComparison.Ordinal) =>
                 Results.Problem(
                     statusCode: StatusCodes.Status401Unauthorized,
                     title: "Ошибка авторизации",

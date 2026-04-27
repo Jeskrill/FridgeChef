@@ -1,7 +1,7 @@
+using FluentValidation;
 using FridgeChef.Auth.Application.Dto;
 using FridgeChef.Auth.Domain;
 using FridgeChef.SharedKernel;
-using FluentValidation;
 
 namespace FridgeChef.Auth.Application.UseCases;
 
@@ -24,7 +24,7 @@ public sealed class LoginHandler(
     IRefreshTokenRepository refreshTokens)
 {
     public async Task<Result<AuthTokensResponse>> HandleAsync(
-        LoginRequest request, AuthClientContext ctx, CancellationToken ct = default)
+        LoginRequest request, AuthClientContext ctx, CancellationToken ct)
     {
         var user = await users.GetByEmailAsync(request.Email, ct);
         if (user is null || !hasher.Verify(request.Password, user.PasswordHash))
@@ -38,7 +38,7 @@ public sealed class LoginHandler(
         await users.UpdateAsync(updated, ct);
 
         var accessToken = jwt.GenerateAccessToken(updated);
-        var rawRefresh  = jwt.GenerateRefreshToken();
+        var rawRefresh = jwt.GenerateRefreshToken();
         var rt = new RefreshToken(
             Guid.NewGuid(), user.Id,
             jwt.HashRefreshToken(rawRefresh),
