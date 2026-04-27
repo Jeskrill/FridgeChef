@@ -44,11 +44,11 @@ public sealed class PriceSyncRunnerTests
     {
         public string RetailerCode => "pyaterochka";
 
-        public Task<IReadOnlyList<ScrapedProduct>> SearchAsync(string query, CancellationToken ct)
+        public Task<IReadOnlyList<ScrapedProductDto>> SearchAsync(string query, CancellationToken ct)
         {
-            IReadOnlyList<ScrapedProduct> products =
+            IReadOnlyList<ScrapedProductDto> products =
             [
-                new ScrapedProduct("sku-1", "milk", "brand", 100, null, "https://example.test/milk")
+                new ScrapedProductDto("sku-1", "milk", "brand", 100, null, "https://example.test/milk")
             ];
 
             return Task.FromResult(products);
@@ -89,7 +89,7 @@ public sealed class PriceSyncRunnerTests
         public async Task PersistBestMatchAsync(
             long retailerId,
             IngredientToScrape ingredient,
-            ScrapedProduct best,
+            ScrapedProductDto best,
             CancellationToken ct)
         {
             PersistStarted.TrySetResult();
@@ -105,6 +105,9 @@ public sealed class PriceSyncRunnerTests
 
             return Task.FromResult(ingredients);
         }
+
+        public Task<PricingStatsResponse> GetStatsAsync(CancellationToken ct) =>
+            Task.FromResult(new PricingStatsResponse(0, 0, null));
     }
 
     private sealed class SingleServiceScopeFactory : IServiceScopeFactory

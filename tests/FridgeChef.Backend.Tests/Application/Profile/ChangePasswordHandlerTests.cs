@@ -23,12 +23,13 @@ public sealed class ChangePasswordHandlerTests
     [Fact]
     public async Task HandleAsync_ShouldUpdatePassword_WhenOldPasswordIsCorrect()
     {
-        var users  = Substitute.For<IUserRepository>();
+        var users = Substitute.For<IUserRepository>();
         var hasher = Substitute.For<IPasswordHasher>();
-        var handler = new ChangePasswordHandler(users, hasher);
+        var refreshTokens = Substitute.For<IRefreshTokenRepository>();
+        var handler = new ChangePasswordHandler(users, hasher, refreshTokens);
 
         var userId = Guid.NewGuid();
-        var user   = MakeUser(userId, "old-hash");
+        var user = MakeUser(userId, "old-hash");
 
         users.GetByIdAsync(userId, CancellationToken.None).Returns(user);
         hasher.Verify("old-password", "old-hash").Returns(true);
@@ -43,17 +44,19 @@ public sealed class ChangePasswordHandlerTests
         await users.Received(1).UpdateAsync(
             Arg.Is<User>(u => u.PasswordHash == "new-hash"),
             CancellationToken.None);
+        await refreshTokens.Received(1).RevokeAllForUserAsync(userId, CancellationToken.None);
     }
 
     [Fact]
     public async Task HandleAsync_ShouldFail_WhenOldPasswordIsWrong()
     {
-        var users  = Substitute.For<IUserRepository>();
+        var users = Substitute.For<IUserRepository>();
         var hasher = Substitute.For<IPasswordHasher>();
-        var handler = new ChangePasswordHandler(users, hasher);
+        var refreshTokens = Substitute.For<IRefreshTokenRepository>();
+        var handler = new ChangePasswordHandler(users, hasher, refreshTokens);
 
         var userId = Guid.NewGuid();
-        var user   = MakeUser(userId, "old-hash");
+        var user = MakeUser(userId, "old-hash");
 
         users.GetByIdAsync(userId, CancellationToken.None).Returns(user);
         hasher.Verify("wrong-password", "old-hash").Returns(false);
@@ -64,7 +67,10 @@ public sealed class ChangePasswordHandlerTests
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(DomainErrors.Auth.InvalidCredentials);
+        result.Error.Should().Be(DomainErrors.Auth.WrongPassword);
         await users.DidNotReceive().UpdateAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+        await refreshTokens.DidNotReceive().RevokeAllForUserAsync(
+            Arg.Any<Guid>(),
+            Arg.Any<CancellationToken>());
     }
 }

@@ -34,22 +34,22 @@ public sealed class PriceSyncServiceTests
     {
         public string RetailerCode => "pyaterochka";
 
-        public Task<IReadOnlyList<ScrapedProduct>> SearchAsync(string query, CancellationToken ct)
+        public Task<IReadOnlyList<ScrapedProductDto>> SearchAsync(string query, CancellationToken ct)
         {
-            IReadOnlyList<ScrapedProduct> products =
+            IReadOnlyList<ScrapedProductDto> products =
             [
                 CreateProduct(query)
             ];
             return Task.FromResult(products);
         }
 
-        public Task<Dictionary<string, IReadOnlyList<ScrapedProduct>>> SearchBatchAsync(
+        public Task<Dictionary<string, IReadOnlyList<ScrapedProductDto>>> SearchBatchAsync(
             IReadOnlyList<string> queries,
             CancellationToken ct)
         {
             var results = queries.ToDictionary(
                 query => query,
-                query => (IReadOnlyList<ScrapedProduct>)
+                query => (IReadOnlyList<ScrapedProductDto>)
                 [
                     CreateProduct(query)
                 ]);
@@ -57,9 +57,9 @@ public sealed class PriceSyncServiceTests
             return Task.FromResult(results);
         }
 
-        private static ScrapedProduct CreateProduct(string query)
+        private static ScrapedProductDto CreateProduct(string query)
         {
-            return new ScrapedProduct(
+            return new ScrapedProductDto(
                 $"sku-{query}",
                 $"{query} product",
                 "brand",
@@ -71,7 +71,7 @@ public sealed class PriceSyncServiceTests
 
     private sealed class RecordingPriceSyncRepository : IPriceSyncRepository
     {
-        public List<(long RetailerId, IngredientToScrape Ingredient, ScrapedProduct Product)> PersistedMatches { get; } = [];
+        public List<(long RetailerId, IngredientToScrape Ingredient, ScrapedProductDto Product)> PersistedMatches { get; } = [];
 
         public Task<long> EnsureRetailerAsync(string code, string name, string baseUrl, CancellationToken ct)
         {
@@ -102,7 +102,7 @@ public sealed class PriceSyncServiceTests
         public Task PersistBestMatchAsync(
             long retailerId,
             IngredientToScrape ingredient,
-            ScrapedProduct best,
+            ScrapedProductDto best,
             CancellationToken ct)
         {
             PersistedMatches.Add((retailerId, ingredient, best));
@@ -121,5 +121,8 @@ public sealed class PriceSyncServiceTests
 
             return Task.FromResult(ingredients);
         }
+
+        public Task<PricingStatsResponse> GetStatsAsync(CancellationToken ct) =>
+            Task.FromResult(new PricingStatsResponse(0, 0, null));
     }
 }

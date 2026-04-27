@@ -1,63 +1,43 @@
 using FluentAssertions;
 using FridgeChef.Pantry.Application.UseCases;
-using FridgeChef.Pantry.Domain;
-using FridgeChef.SharedKernel;
 using NSubstitute;
 
 namespace FridgeChef.Backend.Tests.Application.Pantry;
 
 public sealed class UpdatePantryItemHandlerTests
 {
-    private static PantryItem MakeItem(Guid id, Guid userId) => new(
-        Id: id,
-        UserId: userId,
-        FoodNodeId: 15,
-        QuantityValue: null,
-        UnitId: null,
-        QuantityMode: QuantityMode.Unknown,
-        NormalizedAmountG: null,
-        NormalizedAmountMl: null,
-        Source: "manual",
-        Note: null,
-        ExpiresAt: null,
-        CreatedAt: DateTime.UtcNow,
-        UpdatedAt: DateTime.UtcNow);
-
     [Fact]
     public async Task HandleAsync_ShouldUpdateItem_WhenUserOwnsIt()
     {
         var repository = Substitute.For<IPantryRepository>();
-        var handler    = new UpdatePantryItemHandler(repository);
+        var handler = new UpdatePantryItemHandler(repository);
 
         var userId = Guid.NewGuid();
         var itemId = Guid.NewGuid();
-        var item   = MakeItem(itemId, userId);
+        var request = new UpdatePantryItemRequest(Quantity: 3m, UnitId: 2);
+        var expectedResponse = new PantryItemResponse(itemId, 15, 3m, 2, FridgeChef.Pantry.Domain.QuantityMode.Exact, DateTime.UtcNow);
 
-        repository.GetByIdAsync(itemId, CancellationToken.None).Returns(item);
+        repository.ExistsByIdAndUserAsync(itemId, userId, CancellationToken.None).Returns(true);
+        repository.UpdateAsync(itemId, request, CancellationToken.None).Returns(expectedResponse);
 
-        var result = await handler.HandleAsync(
-            userId, itemId,
-            new UpdatePantryItemRequest(Quantity: 3m, UnitId: 2),
-            CancellationToken.None);
+        var result = await handler.HandleAsync(userId, itemId, request, CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        await repository.Received(1).UpdateAsync(
-            Arg.Is<PantryItem>(p => p.QuantityValue == 3m && p.UnitId == 2),
-            CancellationToken.None);
+        result.Value.Quantity.Should().Be(3m);
+        result.Value.UnitId.Should().Be(2);
+        await repository.Received(1).UpdateAsync(itemId, request, CancellationToken.None);
     }
 
     [Fact]
     public async Task HandleAsync_ShouldReturnNotFound_WhenItemBelongsToOtherUser()
     {
         var repository = Substitute.For<IPantryRepository>();
-        var handler    = new UpdatePantryItemHandler(repository);
+        var handler = new UpdatePantryItemHandler(repository);
 
-        var userId      = Guid.NewGuid();
-        var otherUserId = Guid.NewGuid();
-        var itemId      = Guid.NewGuid();
-        var item        = MakeItem(itemId, otherUserId); // чужой элемент
+        var userId = Guid.NewGuid();
+        var itemId = Guid.NewGuid();
 
-        repository.GetByIdAsync(itemId, CancellationToken.None).Returns(item);
+        repository.ExistsByIdAndUserAsync(itemId, userId, CancellationToken.None).Returns(false);
 
         var result = await handler.HandleAsync(
             userId, itemId,
@@ -65,19 +45,23 @@ public sealed class UpdatePantryItemHandlerTests
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        await repository.DidNotReceive().UpdateAsync(Arg.Any<PantryItem>(), Arg.Any<CancellationToken>());
+        await repository.DidNotReceive().UpdateAsync(
+            Arg.Any<Guid>(), Arg.Any<UpdatePantryItemRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task HandleAsync_ShouldReturnNotFound_WhenItemDoesNotExist()
     {
         var repository = Substitute.For<IPantryRepository>();
-        var handler    = new UpdatePantryItemHandler(repository);
+        var handler = new UpdatePantryItemHandler(repository);
 
-        repository.GetByIdAsync(Arg.Any<Guid>(), CancellationToken.None).Returns((PantryItem?)null);
+        var itemId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+
+        repository.ExistsByIdAndUserAsync(itemId, userId, CancellationToken.None).Returns(false);
 
         var result = await handler.HandleAsync(
-            Guid.NewGuid(), Guid.NewGuid(),
+            userId, itemId,
             new UpdatePantryItemRequest(Quantity: 1m, UnitId: null),
             CancellationToken.None);
 
